@@ -1,1 +1,37 @@
-Firmwares/README.md
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Arduino IDE
+*.hex
+*.eep
+*.elf
+*.map
+*.lss
+*.sym
+build/
+.build/
+*.o
+
+# VSCode
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+venv/
+env/
+
+# Node
+node_modules/
+package-lock.json
+yarn.lock
