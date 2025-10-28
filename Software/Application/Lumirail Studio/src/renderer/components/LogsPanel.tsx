@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { useAppStore, LogLevel } from '../store/useAppStore';
+import { useAppStore } from '../store/useAppStore';
 
 export const LogsPanel: React.FC = () => {
   const { logs, clearLogs } = useAppStore();

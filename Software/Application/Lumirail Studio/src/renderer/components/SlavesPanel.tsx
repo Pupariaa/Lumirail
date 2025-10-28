@@ -21,11 +21,11 @@ export const SlavesPanel: React.FC = () => {
   };
 
   useEffect(() => {
-    if (connected) {
-      refreshSlaves();
-      const interval = setInterval(refreshSlaves, 5000);
-      return () => clearInterval(interval);
-    }
+    if (!connected) return;
+    
+    refreshSlaves();
+    const interval = setInterval(refreshSlaves, 5000);
+    return () => clearInterval(interval);
   }, [connected]);
 
   return (

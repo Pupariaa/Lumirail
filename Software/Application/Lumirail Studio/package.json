@@ -1,7 +1,7 @@
 {
     "name": "lumirail-studio",
     "version": "0.1.0",
-    "description": "Lumirail Studio - Professional Control Software for LMS Systems",
+    "description": "Lumirail Studio",
     "author": "Puparia",
     "license": "ISC",
     "main": "dist/main/index.js",

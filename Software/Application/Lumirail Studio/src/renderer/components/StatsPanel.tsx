@@ -16,11 +16,11 @@ export const StatsPanel: React.FC = () => {
   };
 
   useEffect(() => {
-    if (connected) {
-      refreshStats();
-      const interval = setInterval(refreshStats, 3000);
-      return () => clearInterval(interval);
-    }
+    if (!connected) return;
+    
+    refreshStats();
+    const interval = setInterval(refreshStats, 3000);
+    return () => clearInterval(interval);
   }, [connected]);
 
   if (!stats) {
