@@ -1,6 +1,7 @@
 #include "espnow_handler.h"
 #include <WiFi.h>
 #include <esp_wifi.h>
+#include <string.h>
 
 EspNowHandler espnowHandler;
 EspNowHandler* EspNowHandler::instance = nullptr;
@@ -93,6 +94,41 @@ void EspNowHandler::sendStatus() {
   }
 }
 
+void EspNowHandler::sendPairResponse(const uint8_t* mac, bool accepted) {
+  EspNowMessage response;
+  response.version = 1;
+  response.type = MSG_PAIR_RESPONSE;
+  response.sequence = lastSequence;
+  response.payload[0] = accepted ? 1 : 0;
+  
+  // Add serial number if available
+  uint8_t payloadLen = 1;
+  if (eepromConfig && accepted) {
+    char serial[9];
+    if (eepromConfig->getSerialNumber(serial, 9)) {
+      uint8_t serialLen = strlen(serial);
+      if (serialLen > 0 && payloadLen + serialLen < 200) {
+        memcpy(&response.payload[payloadLen], serial, serialLen);
+        payloadLen += serialLen;
+        response.payload[payloadLen] = '\0';
+        payloadLen++;
+      }
+    }
+  }
+  
+  response.payloadLength = payloadLen;
+  response.checksum = calculateChecksum(response);
+  
+  esp_now_peer_info_t peerInfo;
+  memcpy(peerInfo.peer_addr, mac, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+  esp_now_add_peer(&peerInfo);
+  
+  esp_now_send(mac, (uint8_t *)&response, sizeof(EspNowMessage));
+  esp_now_del_peer(mac);
+}
+
 void EspNowHandler::sendAck(const uint8_t* mac, uint16_t sequence) {
   EspNowMessage msg;
   msg.version = 1;
@@ -108,6 +144,24 @@ void EspNowHandler::sendAck(const uint8_t* mac, uint16_t sequence) {
   esp_now_add_peer(&peerInfo);
   
   esp_now_send(mac, (uint8_t *)&msg, sizeof(EspNowMessage));
+  esp_now_del_peer(mac);
+}
+
+void EspNowHandler::sendNack(const uint8_t* mac, uint16_t sequence) {
+  EspNowMessage nack;
+  nack.version = 1;
+  nack.type = MSG_NACK;
+  nack.sequence = sequence;
+  nack.payloadLength = 0;
+  nack.checksum = calculateChecksum(nack);
+  
+  esp_now_peer_info_t peerInfo;
+  memcpy(peerInfo.peer_addr, mac, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+  esp_now_add_peer(&peerInfo);
+  
+  esp_now_send(mac, (uint8_t *)&nack, sizeof(EspNowMessage));
   esp_now_del_peer(mac);
 }
 
