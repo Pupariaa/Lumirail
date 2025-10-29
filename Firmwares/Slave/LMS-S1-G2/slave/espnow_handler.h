@@ -20,11 +20,13 @@ private:
   uint16_t lastSequence;
   uint64_t lastMasterContact;
   uint64_t lastStatusSent;
+  uint64_t lastPairRequest;
   uint8_t retryCount;
   bool commandReceived;
   EepromConfig* eepromConfig;
   
   void sendStatus();
+  void requestPairing();
   void sendPairResponse(const uint8_t* mac, bool accepted);
   void sendAck(const uint8_t* mac, uint16_t sequence);
   void sendNack(const uint8_t* mac, uint16_t sequence);

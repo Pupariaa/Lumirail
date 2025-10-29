@@ -83,6 +83,9 @@ void SlaveManager::handleSlaveStatus(const uint8_t* mac, EspNowMessage* msg) {
     slaves[index].linked = 0;
     stats.discoveredCount++;
     
+    // Auto-pair if slave is discovered and we received a status from it
+    // This handles the case where slave initiates pairing
+    
     char name[32] = "Slave-";
     for (int i = 0; i < 6; i++) {
       char hex[3];
@@ -103,6 +106,13 @@ void SlaveManager::handleSlaveStatus(const uint8_t* mac, EspNowMessage* msg) {
     Serial.print(" Linked=");
     Serial.print(slaves[index].linked);
     Serial.println(" (use 'pair " + String(index) + "' to pair)");
+    
+    // Auto-pair if slave sent status directly (initiated pairing)
+    // Only if it's not already paired
+    if (!slaves[index].linked) {
+      Serial.println("Auto-pairing with discovered slave...");
+      pairSlave(index);
+    }
   }
 }
 

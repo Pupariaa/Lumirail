@@ -10,7 +10,8 @@ EspNowHandler::EspNowHandler()
   : currentState(STATE_UNPAIRED), 
     lastSequence(0), 
     lastMasterContact(0), 
-    lastStatusSent(0), 
+    lastStatusSent(0),
+    lastPairRequest(0),
     retryCount(0),
     commandReceived(false),
     eepromConfig(nullptr) {
@@ -39,15 +40,42 @@ void EspNowHandler::init(EepromConfig* config) {
   WiFi.setSleep(false);
   
   lastStatusSent = millis();
+  lastPairRequest = 0;
+  
+  // Try to auto-pair if we have an authorized master MAC
+  if (eepromConfig) {
+    uint8_t authMAC[6];
+    if (eepromConfig->getAuthorizedMAC(authMAC)) {
+      Serial.println("Found authorized Master MAC - will attempt auto-pairing");
+      delay(500); // Give system time to stabilize
+      requestPairing();
+    }
+  }
 }
 
 void EspNowHandler::update() {
   uint64_t now = millis();
   
   if (currentState == STATE_UNPAIRED) {
-    if (now - lastMasterContact > STATUS_INTERVAL && lastMasterContact == 0) {
-      Serial.println("Waiting for Master pairing request...");
-      lastMasterContact = 1;
+    // If we have an authorized master MAC, try to pair with it every 3 seconds
+    if (eepromConfig) {
+      uint8_t authMAC[6];
+      if (eepromConfig->getAuthorizedMAC(authMAC)) {
+        if (now - lastPairRequest >= 3000) {
+          requestPairing();
+          lastPairRequest = now;
+        }
+      } else {
+        if (now - lastMasterContact > STATUS_INTERVAL && lastMasterContact == 0) {
+          Serial.println("Waiting for Master pairing request...");
+          lastMasterContact = 1;
+        }
+      }
+    } else {
+      if (now - lastMasterContact > STATUS_INTERVAL && lastMasterContact == 0) {
+        Serial.println("Waiting for Master pairing request...");
+        lastMasterContact = 1;
+      }
     }
   }
   
@@ -92,6 +120,58 @@ void EspNowHandler::sendStatus() {
     Serial.println(esp_err_to_name(sendResult));
     retryCount++;
   }
+}
+
+void EspNowHandler::requestPairing() {
+  if (!eepromConfig) {
+    return;
+  }
+  
+  uint8_t authMAC[6];
+  if (!eepromConfig->getAuthorizedMAC(authMAC)) {
+    return; // No authorized master
+  }
+  
+  // Send a status response directly to the authorized master
+  // This will make the master aware we want to pair
+  EspNowMessage msg;
+  msg.version = 1;
+  msg.type = MSG_STATUS_RESPONSE;
+  msg.sequence = lastSequence++;
+  
+  int16_t rssi = WiFi.RSSI();
+  msg.payload[0] = rssi & 0xFF;
+  msg.payload[1] = (rssi >> 8) & 0xFF;
+  msg.payloadLength = 2;
+  msg.checksum = calculateChecksum(msg);
+  
+  esp_now_peer_info_t peerInfo;
+  memcpy(peerInfo.peer_addr, authMAC, 6);
+  peerInfo.channel = 1;
+  peerInfo.ifidx = WIFI_IF_STA;
+  peerInfo.encrypt = false;
+  
+  esp_err_t addResult = esp_now_add_peer(&peerInfo);
+  if (addResult != ESP_OK && addResult != ESP_ERR_ESPNOW_EXIST) {
+    Serial.print("ERROR: Failed to add authorized master peer: ");
+    Serial.println(esp_err_to_name(addResult));
+    return;
+  }
+  
+  esp_err_t sendResult = esp_now_send(authMAC, (uint8_t *)&msg, sizeof(EspNowMessage));
+  if (sendResult == ESP_OK || sendResult == ESP_ERR_ESPNOW_IF) {
+    Serial.print("Auto-pairing request sent to authorized master ");
+    for (int i = 0; i < 6; i++) {
+      Serial.printf("%02X", authMAC[i]);
+      if (i < 5) Serial.print(":");
+    }
+    Serial.println();
+  } else {
+    Serial.print("ERROR: Failed to send auto-pairing request: ");
+    Serial.println(esp_err_to_name(sendResult));
+  }
+  
+  esp_now_del_peer(authMAC);
 }
 
 void EspNowHandler::sendPairResponse(const uint8_t* mac, bool accepted) {
