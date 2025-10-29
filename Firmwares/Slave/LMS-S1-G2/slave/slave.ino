@@ -53,6 +53,8 @@ void scanI2C() {
       else if (address == 0x4E) deviceName = "LM75A LED2";
       else if (address == 0x60) deviceName = "TLC59116IPWR #1";
       else if (address == 0x68) deviceName = "TLC59116IPWR #2";
+      else if (address == 0x6B) deviceName = "TLC59116 All-Call (reset)";
+      else if (address == 0x00) deviceName = "I2C General Call (reset)";
       
       Serial.print("  [0x");
       if (address < 16) Serial.print("0");
