@@ -10,7 +10,8 @@ EspNowHandler::EspNowHandler()
     lastSequence(0), 
     lastMasterContact(0), 
     lastStatusSent(0), 
-    retryCount(0) {
+    retryCount(0),
+    commandReceived(false) {
   instance = this;
 }
 
@@ -157,6 +158,8 @@ void EspNowHandler::handleCommand(const uint8_t* mac, EspNowMessage* msg) {
   
   Serial.print("COMMAND received: ");
   Serial.println(cmd);
+  
+  commandReceived = true;
   
   if (currentState == STATE_LINKED || currentState == STATE_DISCOVERED) {
     Serial.println("Processing command...");
