@@ -24,14 +24,16 @@ uint32_t lastTempCheck = 0;
 
 void scanI2C() {
   Serial.println("\n=== I2C Bus Scan ===");
-  Serial.println("Scanning I2C addresses from 0x08 to 0x77...");
+  Serial.println("Scanning all I2C addresses (0x08 to 0x77)...");
+  
+  Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+  Wire.setClock(100000);
+  delay(10);
   
   uint8_t foundCount = 0;
   uint8_t foundAddresses[128];
   
-  Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
-  Wire.setClock(100000);
-  
+  // Scan all valid I2C addresses (7-bit addresses: 0x08 to 0x77)
   for (uint8_t address = 0x08; address < 0x78; address++) {
     Wire.beginTransmission(address);
     uint8_t error = Wire.endTransmission();
@@ -41,7 +43,7 @@ void scanI2C() {
       foundCount++;
       
       // Identify known devices
-      String deviceName = "Unknown";
+      String deviceName = "Unknown device";
       if (address == 0x50) deviceName = "AT24C02 EEPROM";
       else if (address == 0x4C) deviceName = "LM75A Power";
       else if (address == 0x48) deviceName = "LM75A LED1";
@@ -53,18 +55,33 @@ void scanI2C() {
       if (address < 16) Serial.print("0");
       Serial.print(address, HEX);
       Serial.print("] ");
-      Serial.println(deviceName);
-    } else if (error == 4) {
-      Serial.print("  [0x");
-      if (address < 16) Serial.print("0");
-      Serial.print(address, HEX);
-      Serial.println("] Unknown error");
+      Serial.print(deviceName);
+      Serial.print(" (error code: ");
+      Serial.print(error);
+      Serial.println(")");
     }
+    
+    // Small delay to allow bus to settle
     delay(1);
   }
   
-  Serial.print("\nTotal devices found: ");
+  Serial.println();
+  Serial.print("Total devices found: ");
   Serial.println(foundCount);
+  
+  if (foundCount == 0) {
+    Serial.println("WARNING: No I2C devices detected! Check wiring.");
+  } else {
+    Serial.print("Found addresses: ");
+    for (uint8_t i = 0; i < foundCount; i++) {
+      Serial.print("0x");
+      if (foundAddresses[i] < 16) Serial.print("0");
+      Serial.print(foundAddresses[i], HEX);
+      if (i < foundCount - 1) Serial.print(", ");
+    }
+    Serial.println();
+  }
+  
   Serial.println("=== End I2C Scan ===\n");
 }
 
@@ -109,18 +126,37 @@ bool checkComponents() {
     Serial.println("OK: LM75A LED2 (0x4E) connected");
   }
   
-  // Check TLC59116IPWR controllers
-  Wire.beginTransmission(0x60);
-  uint8_t error1 = Wire.endTransmission();
-  if (error1 == 0) {
+  // Check TLC59116IPWR controllers with retry
+  bool tlc1Found = false;
+  bool tlc2Found = false;
+  
+  for (uint8_t retry = 0; retry < 3; retry++) {
+    Wire.beginTransmission(0x60);
+    uint8_t error1 = Wire.endTransmission();
+    if (error1 == 0) {
+      tlc1Found = true;
+      break;
+    }
+    delay(5);
+  }
+  
+  for (uint8_t retry = 0; retry < 3; retry++) {
+    Wire.beginTransmission(0x61);
+    uint8_t error2 = Wire.endTransmission();
+    if (error2 == 0) {
+      tlc2Found = true;
+      break;
+    }
+    delay(5);
+  }
+  
+  if (tlc1Found) {
     Serial.println("OK: TLC59116IPWR #1 (0x60) connected");
   } else {
     Serial.println("WARNING: TLC59116IPWR #1 (0x60) not found");
   }
   
-  Wire.beginTransmission(0x61);
-  uint8_t error2 = Wire.endTransmission();
-  if (error2 == 0) {
+  if (tlc2Found) {
     Serial.println("OK: TLC59116IPWR #2 (0x61) connected");
   } else {
     Serial.println("WARNING: TLC59116IPWR #2 (0x61) not found");
