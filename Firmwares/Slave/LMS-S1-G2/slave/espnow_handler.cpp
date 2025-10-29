@@ -58,12 +58,17 @@ void EspNowHandler::update() {
   
   if (currentState == STATE_UNPAIRED) {
     // If we have an authorized master MAC, try to pair with it every 3 seconds
+    // But only if we haven't received any contact from master recently
     if (eepromConfig) {
       uint8_t authMAC[6];
       if (eepromConfig->getAuthorizedMAC(authMAC)) {
-        if (now - lastPairRequest >= 3000) {
-          requestPairing();
-          lastPairRequest = now;
+        // Only send pairing request if we haven't had contact recently
+        // (If we had contact, onDataReceive would have set us to STATE_LINKED)
+        if (lastMasterContact == 0 || (now - lastMasterContact > 5000)) {
+          if (now - lastPairRequest >= 3000) {
+            requestPairing();
+            lastPairRequest = now;
+          }
         }
       } else {
         if (now - lastMasterContact > STATUS_INTERVAL && lastMasterContact == 0) {
@@ -257,6 +262,21 @@ void EspNowHandler::checkTimeout() {
 }
 
 void EspNowHandler::handleMasterDiscovery(const uint8_t* mac, EspNowMessage* msg) {
+  // Master broadcast discovery - check if it's from our authorized master
+  if (currentState == STATE_UNPAIRED && eepromConfig) {
+    uint8_t authMAC[6];
+    if (eepromConfig->getAuthorizedMAC(authMAC)) {
+      if (memcmp(mac, authMAC, 6) == 0) {
+        // This is from our authorized master - we're now linked!
+        currentState = STATE_LINKED;
+        lastMasterContact = millis();
+        Serial.println("Detected pairing with authorized master via broadcast");
+        sendStatus();
+        return;
+      }
+    }
+  }
+  
   // Master broadcast discovery - just respond with status if unpaired
   if (currentState == STATE_UNPAIRED) {
     // Only log first discovery, then silently respond
@@ -390,6 +410,18 @@ void EspNowHandler::onDataReceive(const esp_now_recv_info_t *info, const uint8_t
   
   instance->lastMasterContact = millis();
   instance->lastSequence = msg->sequence;
+  
+  // If we receive any message from an authorized master and we're unpaired, consider ourselves linked
+  if (instance->currentState == STATE_UNPAIRED && instance->eepromConfig) {
+    uint8_t authMAC[6];
+    if (instance->eepromConfig->getAuthorizedMAC(authMAC)) {
+      if (memcmp(mac_addr, authMAC, 6) == 0) {
+        // We received a message from our authorized master - we're now linked
+        instance->currentState = STATE_LINKED;
+        Serial.println("Detected pairing with authorized master");
+      }
+    }
+  }
   
   switch (msg->type) {
     case MSG_BROADCAST_DISCOVERY:
