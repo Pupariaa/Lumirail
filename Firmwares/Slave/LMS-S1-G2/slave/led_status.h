@@ -15,7 +15,10 @@ enum LedState {
   LED_STATE_RESETTING,
   LED_STATE_POWER_LOW,
   LED_STATE_SHORT_CIRCUIT,
-  LED_STATE_OVERCURRENT
+  LED_STATE_OVERCURRENT,
+  LED_STATE_TEMP_OVERHEAT_POWER,
+  LED_STATE_TEMP_OVERHEAT_LED1,
+  LED_STATE_TEMP_OVERHEAT_LED2
 };
 
 class LedStatus {
@@ -38,6 +41,9 @@ private:
   void updatePowerLow();
   void updateShortCircuit();
   void updateOvercurrent();
+  void updateTempOverheatPower();
+  void updateTempOverheatLed1();
+  void updateTempOverheatLed2();
 
 public:
   LedStatus(WS2812B* led);

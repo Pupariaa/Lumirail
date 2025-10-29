@@ -66,6 +66,15 @@ void LedStatus::update() {
     case LED_STATE_OVERCURRENT:
       updateOvercurrent();
       break;
+    case LED_STATE_TEMP_OVERHEAT_POWER:
+      updateTempOverheatPower();
+      break;
+    case LED_STATE_TEMP_OVERHEAT_LED1:
+      updateTempOverheatLed1();
+      break;
+    case LED_STATE_TEMP_OVERHEAT_LED2:
+      updateTempOverheatLed2();
+      break;
   }
   
   led->show();
@@ -208,6 +217,38 @@ void LedStatus::updateOvercurrent() {
   } else {
     uint8_t intensity = ((30 - cycle) * 255) / 15;
     led->setPixel(0, 255, intensity * 3 / 4, 0);
+  }
+}
+
+void LedStatus::updateTempOverheatPower() {
+  uint8_t cycle = animationCounter % 40;
+  
+  if (cycle < 20) {
+    uint8_t intensity = (cycle * 255) / 20;
+    led->setPixel(0, intensity, 0, 0);
+  } else {
+    uint8_t intensity = ((40 - cycle) * 255) / 20;
+    led->setPixel(0, intensity, 0, 0);
+  }
+}
+
+void LedStatus::updateTempOverheatLed1() {
+  uint8_t cycle = animationCounter % 20;
+  
+  if (cycle < 10) {
+    led->setPixel(0, 255, 100, 0);
+  } else {
+    led->setPixel(0, 200, 50, 0);
+  }
+}
+
+void LedStatus::updateTempOverheatLed2() {
+  uint8_t cycle = animationCounter % 20;
+  
+  if (cycle < 10) {
+    led->setPixel(0, 150, 0, 255);
+  } else {
+    led->setPixel(0, 100, 0, 200);
   }
 }
 

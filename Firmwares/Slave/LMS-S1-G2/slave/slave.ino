@@ -9,6 +9,8 @@
 
 #define I2C_SDA_PIN 18
 #define I2C_SCL_PIN 19
+#define TEMP_THRESHOLD 70.0
+#define TEMP_CHECK_INTERVAL 2000
 
 AT24C02 eeprom(AT24C02_ADDR);
 LM75A tempPower(LM75A_ADDR_POWER);
@@ -17,6 +19,8 @@ LM75A tempLed2(LM75A_ADDR_LED2);
 WS2812B statusLed(WS2812B_PIN, 1);
 LedStatus ledStatus(&statusLed);
 Button button(BUTTON_PIN, 1000);
+
+uint32_t lastTempCheck = 0;
 
 bool checkComponents() {
   bool allOk = true;
@@ -96,9 +100,61 @@ void setup() {
   Serial.println("Slave Ready");
 }
 
+void checkTemperatures() {
+  uint32_t now = millis();
+  if (now - lastTempCheck < TEMP_CHECK_INTERVAL) {
+    return;
+  }
+  lastTempCheck = now;
+  
+  float tempP = tempPower.readTemperature();
+  float tempL1 = tempLed1.readTemperature();
+  float tempL2 = tempLed2.readTemperature();
+  
+  if (tempP > TEMP_THRESHOLD) {
+    Serial.print("WARNING: Power temperature excessive: ");
+    Serial.print(tempP);
+    Serial.println("°C");
+    ledStatus.setState(LED_STATE_TEMP_OVERHEAT_POWER);
+    return;
+  }
+  
+  if (tempL1 > TEMP_THRESHOLD) {
+    Serial.print("WARNING: LED Driver 1 temperature excessive: ");
+    Serial.print(tempL1);
+    Serial.println("°C");
+    ledStatus.setState(LED_STATE_TEMP_OVERHEAT_LED1);
+    return;
+  }
+  
+  if (tempL2 > TEMP_THRESHOLD) {
+    Serial.print("WARNING: LED Driver 2 temperature excessive: ");
+    Serial.print(tempL2);
+    Serial.println("°C");
+    ledStatus.setState(LED_STATE_TEMP_OVERHEAT_LED2);
+    return;
+  }
+  
+  LedState currentLedState = ledStatus.getState();
+  if (currentLedState == LED_STATE_TEMP_OVERHEAT_POWER ||
+      currentLedState == LED_STATE_TEMP_OVERHEAT_LED1 ||
+      currentLedState == LED_STATE_TEMP_OVERHEAT_LED2) {
+    SlaveState espState = espnowHandler.getCurrentState();
+    if (espState == STATE_LINKED) {
+      ledStatus.setState(LED_STATE_PAIRED);
+    } else if (espState == STATE_DISCOVERED) {
+      ledStatus.setState(LED_STATE_WAITING_PAIR);
+    } else {
+      ledStatus.setState(LED_STATE_UNPAIRED);
+    }
+  }
+}
+
 void loop() {
   ledStatus.update();
   button.update();
+  
+  checkTemperatures();
   
   SlaveState espState = espnowHandler.getCurrentState();
   
@@ -106,19 +162,26 @@ void loop() {
     ledStatus.setState(LED_STATE_COMMAND_RECEIVED);
   }
   
-  if (espState == STATE_UNPAIRED) {
-    if (ledStatus.getState() != LED_STATE_WAITING_PAIR && 
-        ledStatus.getState() != LED_STATE_INIT &&
-        ledStatus.getState() != LED_STATE_IO_ERROR) {
-      ledStatus.setState(LED_STATE_UNPAIRED);
-    }
-  } else if (espState == STATE_DISCOVERED) {
-    if (ledStatus.getState() != LED_STATE_WAITING_PAIR) {
-      ledStatus.setState(LED_STATE_WAITING_PAIR);
-    }
-  } else if (espState == STATE_LINKED) {
-    if (ledStatus.getState() != LED_STATE_PAIRED) {
-      ledStatus.setState(LED_STATE_PAIRED);
+  LedState currentLedState = ledStatus.getState();
+  bool isTempError = (currentLedState == LED_STATE_TEMP_OVERHEAT_POWER ||
+                      currentLedState == LED_STATE_TEMP_OVERHEAT_LED1 ||
+                      currentLedState == LED_STATE_TEMP_OVERHEAT_LED2);
+  
+  if (!isTempError) {
+    if (espState == STATE_UNPAIRED) {
+      if (currentLedState != LED_STATE_WAITING_PAIR && 
+          currentLedState != LED_STATE_INIT &&
+          currentLedState != LED_STATE_IO_ERROR) {
+        ledStatus.setState(LED_STATE_UNPAIRED);
+      }
+    } else if (espState == STATE_DISCOVERED) {
+      if (currentLedState != LED_STATE_WAITING_PAIR) {
+        ledStatus.setState(LED_STATE_WAITING_PAIR);
+      }
+    } else if (espState == STATE_LINKED) {
+      if (currentLedState != LED_STATE_PAIRED) {
+        ledStatus.setState(LED_STATE_PAIRED);
+      }
     }
   }
   
