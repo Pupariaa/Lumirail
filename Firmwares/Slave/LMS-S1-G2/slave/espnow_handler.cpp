@@ -178,12 +178,17 @@ void EspNowHandler::checkTimeout() {
 void EspNowHandler::handleMasterDiscovery(const uint8_t* mac, EspNowMessage* msg) {
   // Master broadcast discovery - just respond with status if unpaired
   if (currentState == STATE_UNPAIRED) {
-    Serial.print("Master discovery from ");
-    for (int i = 0; i < 6; i++) {
-      Serial.printf("%02X", mac[i]);
-      if (i < 5) Serial.print(":");
+    // Only log first discovery, then silently respond
+    static bool firstDiscovery = true;
+    if (firstDiscovery) {
+      Serial.print("Master discovery from ");
+      for (int i = 0; i < 6; i++) {
+        Serial.printf("%02X", mac[i]);
+        if (i < 5) Serial.print(":");
+      }
+      Serial.println(" - responding to discovery broadcasts");
+      firstDiscovery = false;
     }
-    Serial.println(" - sending status response");
     sendStatus();
   }
 }
