@@ -1,8 +1,12 @@
 #include "ws2812b.h"
 #include <Arduino.h>
+#include "soc/gpio_struct.h"
 
 WS2812B::WS2812B(uint8_t pin, uint8_t numLeds) : pin(pin), numLeds(numLeds), initialized(false) {
   buffer = new uint8_t[numLeds * 3];
+  for (uint8_t i = 0; i < numLeds * 3; i++) {
+    buffer[i] = 0;
+  }
 }
 
 WS2812B::~WS2812B() {
@@ -19,16 +23,18 @@ bool WS2812B::begin() {
 }
 
 void WS2812B::sendBit(bool bit) {
+  uint32_t mask = 1UL << pin;
+  
   if (bit) {
-    digitalWrite(pin, HIGH);
-    delayMicroseconds(0.8);
-    digitalWrite(pin, LOW);
-    delayMicroseconds(0.45);
+    GPIO.out_w1ts = mask;
+    __asm__ __volatile__ ("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+    GPIO.out_w1tc = mask;
+    __asm__ __volatile__ ("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
   } else {
-    digitalWrite(pin, HIGH);
-    delayMicroseconds(0.4);
-    digitalWrite(pin, LOW);
-    delayMicroseconds(0.85);
+    GPIO.out_w1ts = mask;
+    __asm__ __volatile__ ("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+    GPIO.out_w1tc = mask;
+    __asm__ __volatile__ ("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
   }
 }
 
