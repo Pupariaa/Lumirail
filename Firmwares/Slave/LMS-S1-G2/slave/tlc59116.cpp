@@ -49,12 +49,14 @@ bool TLC59116::begin(uint8_t sdaPin, uint8_t sclPin) {
   Serial.println(" responding");
   
   // Software reset (send to all call address 0x00)
+  // Note: Error 4 (timeout) is normal for all-call address, ignore it
   Wire.beginTransmission(0x00);
   Wire.write(0xA5);
   Wire.write(0x5A);
   uint8_t resetError = Wire.endTransmission();
-  if (resetError != 0) {
-    Serial.print("WARNING: Software reset failed for 0x");
+  // Error 4 (timeout) is expected for all-call address reset, only log other errors
+  if (resetError != 0 && resetError != 4) {
+    Serial.print("WARNING: Software reset issue for 0x");
     Serial.print(deviceAddr, HEX);
     Serial.print(" (error: ");
     Serial.print(resetError);
