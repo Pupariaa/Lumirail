@@ -26,7 +26,7 @@ TLC59116 tlc1(TLC59116_ADDR_1);
 TLC59116 tlc2(TLC59116_ADDR_2);
 
 // Temporary: Set to true once to configure serial/model, then set back to false
-#define ENABLE_EEPROM_CONFIG false
+#define ENABLE_EEPROM_CONFIG true
 
 uint32_t lastTempCheck = 0;
 
@@ -266,39 +266,66 @@ void setup() {
     if (ENABLE_EEPROM_CONFIG) {
       Serial.println("\n=== Configuring EEPROM (ONE-TIME SETUP) ===");
       
-      // Set serial number (7 chars max + null)
-      if (!eepromConfig.isSerialSet()) {
-        const char* serial = "28F028G";  // CHANGE THIS to your serial number
-        if (eepromConfig.setSerialNumber(serial)) {
-          Serial.print("OK: Serial number set to: ");
-          Serial.println(serial);
-        } else {
-          Serial.println("ERROR: Failed to set serial number");
-        }
-      } else {
-        char serial[9];
-        eepromConfig.getSerialNumber(serial, 9);
-        Serial.print("Serial number already set: ");
+      // Check what's currently stored
+      char currentSerial[9];
+      char currentModel[9];
+      bool hasSerial = eepromConfig.getSerialNumber(currentSerial, 9);
+      bool hasModel = eepromConfig.getModel(currentModel, 9);
+      
+      if (hasSerial) {
+        Serial.print("Current serial number in EEPROM: ");
+        Serial.println(currentSerial);
+      }
+      if (hasModel) {
+        Serial.print("Current model in EEPROM: ");
+        Serial.println(currentModel);
+      }
+      
+      // FORCE write (overwrite existing data)
+      Serial.println("Writing new values (FORCING overwrite)...");
+      
+      const char* serial = "28F028G";  // CHANGE THIS to your serial number
+      if (eepromConfig.setSerialNumber(serial)) {
+        Serial.print("OK: Serial number set to: ");
         Serial.println(serial);
-      }
-      
-      // Set model (7 chars max + null)
-      if (!eepromConfig.isModelSet()) {
-        const char* model = "LMS-S1-G2";  // CHANGE THIS to your model name
-        if (eepromConfig.setModel(model)) {
-          Serial.print("OK: Model set to: ");
-          Serial.println(model);
-        } else {
-          Serial.println("ERROR: Failed to set model");
-        }
       } else {
-        char model[9];
-        eepromConfig.getModel(model, 9);
-        Serial.print("Model already set: ");
-        Serial.println(model);
+        Serial.println("ERROR: Failed to set serial number");
       }
       
-      Serial.println("=== EEPROM Configuration Complete ===");
+      const char* model = "LMS-S1-G2";  // CHANGE THIS to your model name
+      if (eepromConfig.setModel(model)) {
+        Serial.print("OK: Model set to: ");
+        Serial.println(model);
+      } else {
+        Serial.println("ERROR: Failed to set model");
+      }
+      
+      // Verify what was written
+      Serial.println("\nVerifying stored values...");
+      char verifySerial[9];
+      char verifyModel[9];
+      if (eepromConfig.getSerialNumber(verifySerial, 9)) {
+        Serial.print("Stored Serial: '");
+        Serial.print(verifySerial);
+        Serial.print("' - ");
+        if (strcmp(verifySerial, serial) == 0) {
+          Serial.println("MATCH!");
+        } else {
+          Serial.println("MISMATCH!");
+        }
+      }
+      if (eepromConfig.getModel(verifyModel, 9)) {
+        Serial.print("Stored Model: '");
+        Serial.print(verifyModel);
+        Serial.print("' - ");
+        if (strcmp(verifyModel, model) == 0) {
+          Serial.println("MATCH!");
+        } else {
+          Serial.println("MISMATCH!");
+        }
+      }
+      
+      Serial.println("\n=== EEPROM Configuration Complete ===");
       Serial.println("Set ENABLE_EEPROM_CONFIG to false and recompile!");
       Serial.println();
     } else {
