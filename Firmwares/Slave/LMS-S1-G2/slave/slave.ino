@@ -22,11 +22,61 @@ Button button(BUTTON_PIN, 1000);
 
 uint32_t lastTempCheck = 0;
 
+void scanI2C() {
+  Serial.println("\n=== I2C Bus Scan ===");
+  Serial.println("Scanning I2C addresses from 0x08 to 0x77...");
+  
+  uint8_t foundCount = 0;
+  uint8_t foundAddresses[128];
+  
+  Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+  Wire.setClock(100000);
+  
+  for (uint8_t address = 0x08; address < 0x78; address++) {
+    Wire.beginTransmission(address);
+    uint8_t error = Wire.endTransmission();
+    
+    if (error == 0) {
+      foundAddresses[foundCount] = address;
+      foundCount++;
+      
+      // Identify known devices
+      String deviceName = "Unknown";
+      if (address == 0x50) deviceName = "AT24C02 EEPROM";
+      else if (address == 0x4C) deviceName = "LM75A Power";
+      else if (address == 0x48) deviceName = "LM75A LED1";
+      else if (address == 0x4E) deviceName = "LM75A LED2";
+      else if (address == 0x60) deviceName = "TLC59116IPWR #1";
+      else if (address == 0x61) deviceName = "TLC59116IPWR #2";
+      
+      Serial.print("  [0x");
+      if (address < 16) Serial.print("0");
+      Serial.print(address, HEX);
+      Serial.print("] ");
+      Serial.println(deviceName);
+    } else if (error == 4) {
+      Serial.print("  [0x");
+      if (address < 16) Serial.print("0");
+      Serial.print(address, HEX);
+      Serial.println("] Unknown error");
+    }
+    delay(1);
+  }
+  
+  Serial.print("\nTotal devices found: ");
+  Serial.println(foundCount);
+  Serial.println("=== End I2C Scan ===\n");
+}
+
 bool checkComponents() {
   bool allOk = true;
   
   Serial.println("Checking I2C components...");
   
+  // First, scan all I2C addresses for debug
+  scanI2C();
+  
+  // Check known devices
   if (!eeprom.begin(I2C_SDA_PIN, I2C_SCL_PIN)) {
     Serial.println("ERROR: AT24C02 EEPROM (0x50) not found");
     allOk = false;
@@ -57,6 +107,23 @@ bool checkComponents() {
     ledStatus.setState(LED_STATE_IO_ERROR);
   } else {
     Serial.println("OK: LM75A LED2 (0x4E) connected");
+  }
+  
+  // Check TLC59116IPWR controllers
+  Wire.beginTransmission(0x60);
+  uint8_t error1 = Wire.endTransmission();
+  if (error1 == 0) {
+    Serial.println("OK: TLC59116IPWR #1 (0x60) connected");
+  } else {
+    Serial.println("WARNING: TLC59116IPWR #1 (0x60) not found");
+  }
+  
+  Wire.beginTransmission(0x61);
+  uint8_t error2 = Wire.endTransmission();
+  if (error2 == 0) {
+    Serial.println("OK: TLC59116IPWR #2 (0x61) connected");
+  } else {
+    Serial.println("WARNING: TLC59116IPWR #2 (0x61) not found");
   }
   
   return allOk;
