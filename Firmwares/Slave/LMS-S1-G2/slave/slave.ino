@@ -503,9 +503,17 @@ void loop() {
   }
   
   if (button.isHeld()) {
-    Serial.println("Button held - Resetting...");
+    Serial.println("Button held - Resetting and clearing pairing...");
     ledStatus.setState(LED_STATE_RESETTING);
-    delay(2000);
+    
+    // Clear authorized MAC from EEPROM before reset
+    if (eeprom.isPresent()) {
+      eepromConfig.clearAuthorizedMAC();
+      Serial.println("Cleared authorized Master MAC from EEPROM");
+      delay(100); // Give EEPROM time to write
+    }
+    
+    delay(1900); // Total 2 seconds
     ESP.restart();
   }
   

@@ -253,11 +253,7 @@ void SlaveManager::unpairSlave(int slaveId) {
   }
   
   if (slaves[slaveId].linked) {
-    slaves[slaveId].linked = 0;
-    slaves[slaveId].state = STATE_DISCOVERED;
-    stats.pairedCount--;
-    
-    Serial.print("UNPAIRED: ID ");
+    Serial.print("Sending unpair request to slave ID ");
     Serial.print(slaveId);
     Serial.print(" MAC ");
     for (int i = 0; i < 6; i++) {
@@ -265,6 +261,23 @@ void SlaveManager::unpairSlave(int slaveId) {
       if (i < 5) Serial.print(":");
     }
     Serial.println();
+    
+    if (espnowHandler.sendUnpair(slaves[slaveId].mac)) {
+      slaves[slaveId].linked = 0;
+      slaves[slaveId].state = STATE_DISCOVERED;
+      stats.pairedCount--;
+      
+      Serial.print("UNPAIRED: ID ");
+      Serial.print(slaveId);
+      Serial.print(" MAC ");
+      for (int i = 0; i < 6; i++) {
+        Serial.printf("%02X", slaves[slaveId].mac[i]);
+        if (i < 5) Serial.print(":");
+      }
+      Serial.println();
+    } else {
+      Serial.println("ERROR: Failed to send unpair request");
+    }
   } else {
     Serial.println("ERROR: Slave not paired");
   }

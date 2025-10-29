@@ -339,6 +339,28 @@ void EspNowHandler::handlePairRequest(const uint8_t* mac, EspNowMessage* msg) {
   sendAck(mac, msg->sequence);
 }
 
+void EspNowHandler::handleUnpair(const uint8_t* mac, EspNowMessage* msg) {
+  Serial.print("UNPAIR request from Master ");
+  for (int i = 0; i < 6; i++) {
+    Serial.printf("%02X", mac[i]);
+    if (i < 5) Serial.print(":");
+  }
+  Serial.println();
+  
+  // Clear authorized MAC from EEPROM
+  if (eepromConfig) {
+    eepromConfig->clearAuthorizedMAC();
+    Serial.println("Cleared authorized Master MAC from EEPROM");
+  }
+  
+  // Change state to unpaired
+  currentState = STATE_UNPAIRED;
+  lastMasterContact = 0;
+  
+  sendAck(mac, msg->sequence);
+  Serial.println("Unpaired successfully");
+}
+
 void EspNowHandler::handlePingRequest(const uint8_t* mac, EspNowMessage* msg) {
   EspNowMessage response;
   response.version = 1;
@@ -429,6 +451,9 @@ void EspNowHandler::onDataReceive(const esp_now_recv_info_t *info, const uint8_t
       break;
     case MSG_PAIR_REQUEST:
       instance->handlePairRequest(mac_addr, msg);
+      break;
+    case MSG_UNPAIR:
+      instance->handleUnpair(mac_addr, msg);
       break;
     case MSG_PING_REQUEST:
       instance->handlePingRequest(mac_addr, msg);

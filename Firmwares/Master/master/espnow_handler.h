@@ -12,6 +12,7 @@ public:
   
   bool sendPing(const uint8_t* mac);
   bool sendPairRequest(const uint8_t* mac);
+  bool sendUnpair(const uint8_t* mac);
   bool sendCommand(const uint8_t* mac, const char* command);
   bool sendBroadcastCommand(const char* command);
   

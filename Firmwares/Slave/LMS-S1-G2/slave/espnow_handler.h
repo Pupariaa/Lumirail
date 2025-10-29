@@ -34,6 +34,7 @@ private:
   
   void handleMasterDiscovery(const uint8_t* mac, EspNowMessage* msg);
   void handlePairRequest(const uint8_t* mac, EspNowMessage* msg);
+  void handleUnpair(const uint8_t* mac, EspNowMessage* msg);
   void handlePingRequest(const uint8_t* mac, EspNowMessage* msg);
   void handleCommand(const uint8_t* mac, EspNowMessage* msg);
   
