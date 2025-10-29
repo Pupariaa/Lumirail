@@ -169,36 +169,59 @@ bool checkComponents() {
 }
 
 void testTLC59116() {
-  Serial.println("Testing TLC59116IPWR controllers...");
+  Serial.println("\n=== TLC59116IPWR Test ===");
   
   // Initialize controllers
+  Serial.println("Initializing TLC59116IPWR #1 (0x68)...");
   bool tlc1Ok = tlc1.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+  
+  Serial.println("Initializing TLC59116IPWR #2 (0x6B)...");
   bool tlc2Ok = tlc2.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   
   if (!tlc1Ok && !tlc2Ok) {
     Serial.println("ERROR: Both TLC59116IPWR controllers failed to initialize");
+    Serial.println("=== End TLC59116IPWR Test ===\n");
     return;
+  }
+  
+  if (!tlc1Ok) {
+    Serial.println("WARNING: TLC59116IPWR #1 (0x68) failed - skipping test");
+  }
+  if (!tlc2Ok) {
+    Serial.println("WARNING: TLC59116IPWR #2 (0x6B) failed - skipping test");
   }
   
   Serial.println("Turning ON all LEDs...");
   if (tlc1Ok) {
-    tlc1.setAllPWM(0xFF);
+    if (!tlc1.setAllPWM(0xFF)) {
+      Serial.println("ERROR: Failed to turn ON LEDs for TLC59116IPWR #1 (0x68)");
+    }
   }
   if (tlc2Ok) {
-    tlc2.setAllPWM(0xFF);
+    if (!tlc2.setAllPWM(0xFF)) {
+      Serial.println("ERROR: Failed to turn ON LEDs for TLC59116IPWR #2 (0x6B)");
+    }
   }
   delay(500);
   
   Serial.println("Turning OFF all LEDs...");
   if (tlc1Ok) {
-    tlc1.allOff();
+    if (!tlc1.allOff()) {
+      Serial.println("ERROR: Failed to turn OFF LEDs for TLC59116IPWR #1 (0x68)");
+    }
   }
   if (tlc2Ok) {
-    tlc2.allOff();
+    if (!tlc2.allOff()) {
+      Serial.println("ERROR: Failed to turn OFF LEDs for TLC59116IPWR #2 (0x6B)");
+    }
   }
   delay(500);
   
-  Serial.println("TLC59116IPWR test complete");
+  Serial.print("TLC59116IPWR test complete - #1: ");
+  Serial.print(tlc1Ok ? "OK" : "FAILED");
+  Serial.print(", #2: ");
+  Serial.println(tlc2Ok ? "OK" : "FAILED");
+  Serial.println("=== End TLC59116IPWR Test ===\n");
 }
 
 void setup() {

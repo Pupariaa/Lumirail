@@ -33,8 +33,8 @@ public:
   bool setPWM(uint8_t channel, uint8_t value);
   bool setAllPWM(uint8_t value);
   bool setLedoutMode(uint8_t bank, uint8_t mode);
-  void enableAllLedPWM();
-  void allOff();
+  bool enableAllLedPWM();
+  bool allOff();
   bool isPresent() { return devicePresent; }
 };
 
