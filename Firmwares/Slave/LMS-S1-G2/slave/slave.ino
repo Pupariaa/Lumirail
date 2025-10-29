@@ -1,6 +1,7 @@
 #include "protocol.h"
 #include "espnow_handler.h"
 #include "at24c02.h"
+#include "eeprom_config.h"
 #include "lm75a.h"
 #include "ws2812b.h"
 #include "button.h"
@@ -14,6 +15,7 @@
 #define TEMP_CHECK_INTERVAL 2000
 
 AT24C02 eeprom(AT24C02_ADDR);
+EepromConfig eepromConfig(&eeprom);
 LM75A tempPower(LM75A_ADDR_POWER);
 LM75A tempLed1(LM75A_ADDR_LED1);
 LM75A tempLed2(LM75A_ADDR_LED2);
@@ -22,6 +24,9 @@ LedStatus ledStatus(&statusLed);
 Button button(BUTTON_PIN, 1000);
 TLC59116 tlc1(TLC59116_ADDR_1);
 TLC59116 tlc2(TLC59116_ADDR_2);
+
+// Temporary: Set to true once to configure serial/model, then set back to false
+#define ENABLE_EEPROM_CONFIG false
 
 uint32_t lastTempCheck = 0;
 
@@ -253,7 +258,87 @@ void setup() {
   // Test TLC59116IPWR controllers
   testTLC59116();
   
-  espnowHandler.init();
+  // Initialize EEPROM config
+  if (eeprom.isPresent()) {
+    eepromConfig.init();
+    
+    // Temporary: Configure serial number and model (one-time setup)
+    if (ENABLE_EEPROM_CONFIG) {
+      Serial.println("\n=== Configuring EEPROM (ONE-TIME SETUP) ===");
+      
+      // Set serial number (7 chars max + null)
+      if (!eepromConfig.isSerialSet()) {
+        const char* serial = "LMS-S1-001";  // CHANGE THIS to your serial number
+        if (eepromConfig.setSerialNumber(serial)) {
+          Serial.print("OK: Serial number set to: ");
+          Serial.println(serial);
+        } else {
+          Serial.println("ERROR: Failed to set serial number");
+        }
+      } else {
+        char serial[9];
+        eepromConfig.getSerialNumber(serial, 9);
+        Serial.print("Serial number already set: ");
+        Serial.println(serial);
+      }
+      
+      // Set model (7 chars max + null)
+      if (!eepromConfig.isModelSet()) {
+        const char* model = "LMS-S1-G2";  // CHANGE THIS to your model name
+        if (eepromConfig.setModel(model)) {
+          Serial.print("OK: Model set to: ");
+          Serial.println(model);
+        } else {
+          Serial.println("ERROR: Failed to set model");
+        }
+      } else {
+        char model[9];
+        eepromConfig.getModel(model, 9);
+        Serial.print("Model already set: ");
+        Serial.println(model);
+      }
+      
+      Serial.println("=== EEPROM Configuration Complete ===");
+      Serial.println("Set ENABLE_EEPROM_CONFIG to false and recompile!");
+      Serial.println();
+    } else {
+      // Just read and display current config
+      char serial[9];
+      char model[9];
+      if (eepromConfig.getSerialNumber(serial, 9)) {
+        Serial.print("Serial Number: ");
+        Serial.println(serial);
+      } else {
+        Serial.println("Serial Number: Not set");
+      }
+      
+      if (eepromConfig.getModel(model, 9)) {
+        Serial.print("Model: ");
+        Serial.println(model);
+      } else {
+        Serial.println("Model: Not set");
+      }
+      
+      uint8_t authMAC[6];
+      if (eepromConfig.getAuthorizedMAC(authMAC)) {
+        Serial.print("Authorized Master MAC: ");
+        for (int i = 0; i < 6; i++) {
+          Serial.printf("%02X", authMAC[i]);
+          if (i < 5) Serial.print(":");
+        }
+        Serial.println();
+      } else {
+        Serial.println("Authorized Master MAC: None (any master can pair)");
+      }
+    }
+  }
+  
+  // Initialize ESP-NOW with EEPROM config
+  if (eeprom.isPresent()) {
+    espnowHandler.init(&eepromConfig);
+  } else {
+    espnowHandler.init();
+  }
   
   uint8_t mac[6];
   esp_wifi_get_mac(WIFI_IF_STA, mac);

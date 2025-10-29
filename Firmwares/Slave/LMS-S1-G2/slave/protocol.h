@@ -20,7 +20,9 @@ enum MessageType {
   MSG_PING_RESPONSE = 0x04,
   MSG_COMMAND = 0x05,
   MSG_ACK = 0x06,
-  MSG_NACK = 0x07
+  MSG_NACK = 0x07,
+  MSG_PAIR_REQUEST = 0x08,
+  MSG_PAIR_RESPONSE = 0x09
 };
 
 struct EspNowMessage {

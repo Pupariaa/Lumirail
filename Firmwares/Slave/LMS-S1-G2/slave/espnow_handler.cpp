@@ -11,11 +11,18 @@ EspNowHandler::EspNowHandler()
     lastMasterContact(0), 
     lastStatusSent(0), 
     retryCount(0),
-    commandReceived(false) {
+    commandReceived(false),
+    eepromConfig(nullptr) {
   instance = this;
 }
 
 void EspNowHandler::init() {
+  init(nullptr);
+}
+
+void EspNowHandler::init(EepromConfig* config) {
+  eepromConfig = config;
+  
   WiFi.mode(WIFI_STA);
   
   if (esp_now_init() != ESP_OK) {
@@ -38,7 +45,7 @@ void EspNowHandler::update() {
   
   if (currentState == STATE_UNPAIRED) {
     if (now - lastMasterContact > STATUS_INTERVAL && lastMasterContact == 0) {
-      Serial.println("Waiting for Master discovery...");
+      Serial.println("Waiting for Master pairing request...");
       lastMasterContact = 1;
     }
   }
@@ -115,17 +122,60 @@ void EspNowHandler::checkTimeout() {
 }
 
 void EspNowHandler::handleMasterDiscovery(const uint8_t* mac, EspNowMessage* msg) {
+  // Master broadcast discovery - just respond with status if unpaired
   if (currentState == STATE_UNPAIRED) {
-    currentState = STATE_DISCOVERED;
-    Serial.print("DISCOVERED: Master at ");
+    Serial.print("Master discovery from ");
     for (int i = 0; i < 6; i++) {
       Serial.printf("%02X", mac[i]);
       if (i < 5) Serial.print(":");
     }
-    Serial.println();
+    Serial.println(" - sending status response");
+    sendStatus();
+  }
+}
+
+void EspNowHandler::handlePairRequest(const uint8_t* mac, EspNowMessage* msg) {
+  Serial.print("PAIR REQUEST from Master ");
+  for (int i = 0; i < 6; i++) {
+    Serial.printf("%02X", mac[i]);
+    if (i < 5) Serial.print(":");
+  }
+  Serial.println();
+  
+  // Check if MAC is authorized
+  bool authorized = true;
+  if (eepromConfig) {
+    authorized = eepromConfig->isMACAuthorized(mac);
+    
+    if (!authorized) {
+      Serial.println("PAIR REJECTED: Master MAC not authorized");
+      sendPairResponse(mac, false);
+      sendNack(mac, msg->sequence);
+      return;
+    }
+    
+    Serial.println("PAIR ACCEPTED: Master MAC authorized");
+  } else {
+    Serial.println("PAIR ACCEPTED: No EEPROM config - allowing any master");
   }
   
-  sendStatus();
+  // Accept pairing
+  if (currentState == STATE_UNPAIRED) {
+    currentState = STATE_DISCOVERED;
+    
+    // Store authorized MAC if not already set
+    if (eepromConfig && authorized) {
+      uint8_t currentMAC[6];
+      if (!eepromConfig->getAuthorizedMAC(currentMAC)) {
+        // No MAC set yet, store this one
+        eepromConfig->setAuthorizedMAC(mac);
+        Serial.println("Stored Master MAC in EEPROM");
+      }
+    }
+  }
+  
+  sendPairResponse(mac, true);
+  sendAck(mac, msg->sequence);
 }
 
 void EspNowHandler::handlePingRequest(const uint8_t* mac, EspNowMessage* msg) {
@@ -197,11 +247,18 @@ void EspNowHandler::onDataReceive(const esp_now_recv_info_t *info, const uint8_t
     case MSG_BROADCAST_DISCOVERY:
       instance->handleMasterDiscovery(mac_addr, msg);
       break;
+    case MSG_PAIR_REQUEST:
+      instance->handlePairRequest(mac_addr, msg);
+      break;
     case MSG_PING_REQUEST:
       instance->handlePingRequest(mac_addr, msg);
       break;
     case MSG_COMMAND:
       instance->handleCommand(mac_addr, msg);
+      break;
+    default:
+      Serial.print("WARNING: Unknown message type: ");
+      Serial.println(msg->type);
       break;
   }
 }

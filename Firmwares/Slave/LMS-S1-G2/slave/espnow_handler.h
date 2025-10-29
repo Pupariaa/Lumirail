@@ -2,12 +2,14 @@
 #define ESPNOW_HANDLER_H
 
 #include "protocol.h"
+#include "eeprom_config.h"
 #include <esp_now.h>
 
 class EspNowHandler {
 public:
   EspNowHandler();
   void init();
+  void init(EepromConfig* config);
   void update();
   
   SlaveState getCurrentState() { return currentState; }
@@ -20,12 +22,16 @@ private:
   uint64_t lastStatusSent;
   uint8_t retryCount;
   bool commandReceived;
+  EepromConfig* eepromConfig;
   
   void sendStatus();
+  void sendPairResponse(const uint8_t* mac, bool accepted);
   void sendAck(const uint8_t* mac, uint16_t sequence);
+  void sendNack(const uint8_t* mac, uint16_t sequence);
   void checkTimeout();
   
   void handleMasterDiscovery(const uint8_t* mac, EspNowMessage* msg);
+  void handlePairRequest(const uint8_t* mac, EspNowMessage* msg);
   void handlePingRequest(const uint8_t* mac, EspNowMessage* msg);
   void handleCommand(const uint8_t* mac, EspNowMessage* msg);
   
