@@ -111,11 +111,20 @@ void LedStatus::updateInit() {
   if (cycle < 20) {
     uint8_t intensity = (cycle * 255) / 20;
     led->setPixelDimmed(0, 0, intensity, intensity, LED_BRIGHTNESS);
+    if (cycle == 0 || cycle == 10 || cycle == 19) {
+      Serial.print("LED INIT - R:0 G:");
+      Serial.print((intensity * LED_BRIGHTNESS) / 100);
+      Serial.print(" B:");
+      Serial.println((intensity * LED_BRIGHTNESS) / 100);
+    }
   } else if (cycle < 40) {
     uint8_t intensity = ((40 - cycle) * 255) / 20;
     led->setPixelDimmed(0, 0, intensity, intensity, LED_BRIGHTNESS);
   } else {
     led->setPixel(0, 0, 0, 0);
+    if (cycle == 40) {
+      Serial.println("LED INIT - OFF");
+    }
   }
 }
 

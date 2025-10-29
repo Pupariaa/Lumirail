@@ -88,6 +88,19 @@ void WS2812B::clear() {
 }
 
 void WS2812B::show() {
+  static uint32_t lastDebug = 0;
+  uint32_t now = millis();
+  
+  if (now - lastDebug > 1000) {
+    Serial.print("WS2812B show - Buffer[0]: G=");
+    Serial.print(buffer[0]);
+    Serial.print(" R=");
+    Serial.print(buffer[1]);
+    Serial.print(" B=");
+    Serial.println(buffer[2]);
+    lastDebug = now;
+  }
+  
   portDISABLE_INTERRUPTS();
   
   uint32_t mask = 1UL << pin;
