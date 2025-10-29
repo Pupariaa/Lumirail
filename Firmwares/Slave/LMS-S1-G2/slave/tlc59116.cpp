@@ -1,4 +1,5 @@
 #include "tlc59116.h"
+#include <Arduino.h>
 
 TLC59116::TLC59116(uint8_t address) : deviceAddr(address), sdaPin(18), sclPin(19), devicePresent(false) {
 }
