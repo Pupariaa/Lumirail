@@ -54,6 +54,14 @@ void WS2812B::setPixel(uint8_t index, uint32_t color) {
   setPixel(index, r, g, b);
 }
 
+void WS2812B::setPixelDimmed(uint8_t index, uint8_t r, uint8_t g, uint8_t b, uint8_t brightness) {
+  if (brightness > 100) brightness = 100;
+  r = (r * brightness) / 100;
+  g = (g * brightness) / 100;
+  b = (b * brightness) / 100;
+  setPixel(index, r, g, b);
+}
+
 void WS2812B::clear() {
   for (uint8_t i = 0; i < numLeds * 3; i++) {
     buffer[i] = 0;

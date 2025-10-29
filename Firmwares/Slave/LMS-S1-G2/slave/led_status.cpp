@@ -2,6 +2,7 @@
 #include <Arduino.h>
 
 #define ANIMATION_UPDATE_MS 50
+#define LED_BRIGHTNESS 30
 
 LedStatus::LedStatus(WS2812B* led) : led(led), currentState(LED_STATE_INIT), lastState(LED_STATE_INIT), 
                                       lastUpdate(0), animationCounter(0), blinkState(false) {
@@ -85,10 +86,10 @@ void LedStatus::updateInit() {
   
   if (cycle < 20) {
     uint8_t intensity = (cycle * 255) / 20;
-    led->setPixel(0, 0, intensity, intensity);
+    led->setPixelDimmed(0, 0, intensity, intensity, LED_BRIGHTNESS);
   } else if (cycle < 40) {
     uint8_t intensity = ((40 - cycle) * 255) / 20;
-    led->setPixel(0, 0, intensity, intensity);
+    led->setPixelDimmed(0, 0, intensity, intensity, LED_BRIGHTNESS);
   } else {
     led->setPixel(0, 0, 0, 0);
   }
@@ -97,7 +98,7 @@ void LedStatus::updateInit() {
 void LedStatus::updateIoError() {
   blinkState = (animationCounter / 10) % 2;
   if (blinkState) {
-    led->setPixel(0, 255, 0, 0);
+    led->setPixelDimmed(0, 255, 0, 0, LED_BRIGHTNESS);
   } else {
     led->setPixel(0, 0, 0, 0);
   }
@@ -108,10 +109,10 @@ void LedStatus::updateCommError() {
   
   if (cycle < 10) {
     uint8_t intensity = (cycle * 255) / 10;
-    led->setPixel(0, 255, intensity * 3 / 4, 0);
+    led->setPixelDimmed(0, 255, intensity * 3 / 4, 0, LED_BRIGHTNESS);
   } else if (cycle < 20) {
     uint8_t intensity = ((20 - cycle) * 255) / 10;
-    led->setPixel(0, 255, intensity * 3 / 4, 0);
+    led->setPixelDimmed(0, 255, intensity * 3 / 4, 0, LED_BRIGHTNESS);
   } else {
     led->setPixel(0, 0, 0, 0);
   }
@@ -122,10 +123,10 @@ void LedStatus::updateWaitingPair() {
   
   if (cycle < 30) {
     uint8_t intensity = (cycle * 255) / 30;
-    led->setPixel(0, 0, 0, intensity);
+    led->setPixelDimmed(0, 0, 0, intensity, LED_BRIGHTNESS);
   } else {
     uint8_t intensity = ((60 - cycle) * 255) / 30;
-    led->setPixel(0, 0, 0, intensity);
+    led->setPixelDimmed(0, 0, 0, intensity, LED_BRIGHTNESS);
   }
 }
 
@@ -134,10 +135,10 @@ void LedStatus::updatePaired() {
   
   if (cycle < 50) {
     uint8_t intensity = 128 + (cycle * 127) / 50;
-    led->setPixel(0, 0, intensity, 0);
+    led->setPixelDimmed(0, 0, intensity, 0, LED_BRIGHTNESS);
   } else {
     uint8_t intensity = 255 - ((cycle - 50) * 127) / 50;
-    led->setPixel(0, 0, intensity, 0);
+    led->setPixelDimmed(0, 0, intensity, 0, LED_BRIGHTNESS);
   }
 }
 
@@ -145,7 +146,7 @@ void LedStatus::updateCommandReceived() {
   uint8_t cycle = animationCounter % 20;
   
   if (cycle < 4) {
-    led->setPixel(0, 255, 255, 255);
+    led->setPixelDimmed(0, 255, 255, 255, LED_BRIGHTNESS);
   } else {
     led->setPixel(0, 0, 0, 0);
     if (cycle == 19) {
@@ -159,10 +160,10 @@ void LedStatus::updateUnpaired() {
   
   if (cycle < 15) {
     uint8_t intensity = (cycle * 255) / 15;
-    led->setPixel(0, 255, intensity, 0);
+    led->setPixelDimmed(0, 255, intensity, 0, LED_BRIGHTNESS);
   } else if (cycle < 30) {
     uint8_t intensity = ((30 - cycle) * 255) / 15;
-    led->setPixel(0, 255, intensity, 0);
+    led->setPixelDimmed(0, 255, intensity, 0, LED_BRIGHTNESS);
   } else {
     led->setPixel(0, 0, 0, 0);
   }
@@ -173,17 +174,17 @@ void LedStatus::updateResetting() {
   uint8_t hue = (cycle * 6) % 360;
   
   if (hue < 60) {
-    led->setPixel(0, 255, (hue * 255) / 60, 0);
+    led->setPixelDimmed(0, 255, (hue * 255) / 60, 0, LED_BRIGHTNESS);
   } else if (hue < 120) {
-    led->setPixel(0, 255 - ((hue - 60) * 255) / 60, 255, 0);
+    led->setPixelDimmed(0, 255 - ((hue - 60) * 255) / 60, 255, 0, LED_BRIGHTNESS);
   } else if (hue < 180) {
-    led->setPixel(0, 0, 255, ((hue - 120) * 255) / 60);
+    led->setPixelDimmed(0, 0, 255, ((hue - 120) * 255) / 60, LED_BRIGHTNESS);
   } else if (hue < 240) {
-    led->setPixel(0, 0, 255 - ((hue - 180) * 255) / 60, 255);
+    led->setPixelDimmed(0, 0, 255 - ((hue - 180) * 255) / 60, 255, LED_BRIGHTNESS);
   } else if (hue < 300) {
-    led->setPixel(0, ((hue - 240) * 255) / 60, 0, 255);
+    led->setPixelDimmed(0, ((hue - 240) * 255) / 60, 0, 255, LED_BRIGHTNESS);
   } else {
-    led->setPixel(0, 255, 0, 255 - ((hue - 300) * 255) / 60);
+    led->setPixelDimmed(0, 255, 0, 255 - ((hue - 300) * 255) / 60, LED_BRIGHTNESS);
   }
 }
 
@@ -192,17 +193,17 @@ void LedStatus::updatePowerLow() {
   
   if (cycle < 20) {
     uint8_t intensity = (cycle * 255) / 20;
-    led->setPixel(0, intensity, intensity / 4, 0);
+    led->setPixelDimmed(0, intensity, intensity / 4, 0, LED_BRIGHTNESS);
   } else {
     uint8_t intensity = ((40 - cycle) * 255) / 20;
-    led->setPixel(0, intensity, intensity / 4, 0);
+    led->setPixelDimmed(0, intensity, intensity / 4, 0, LED_BRIGHTNESS);
   }
 }
 
 void LedStatus::updateShortCircuit() {
   blinkState = (animationCounter / 2) % 2;
   if (blinkState) {
-    led->setPixel(0, 255, 0, 0);
+    led->setPixelDimmed(0, 255, 0, 0, LED_BRIGHTNESS);
   } else {
     led->setPixel(0, 0, 0, 0);
   }
@@ -213,10 +214,10 @@ void LedStatus::updateOvercurrent() {
   
   if (cycle < 15) {
     uint8_t intensity = (cycle * 255) / 15;
-    led->setPixel(0, 255, intensity * 3 / 4, 0);
+    led->setPixelDimmed(0, 255, intensity * 3 / 4, 0, LED_BRIGHTNESS);
   } else {
     uint8_t intensity = ((30 - cycle) * 255) / 15;
-    led->setPixel(0, 255, intensity * 3 / 4, 0);
+    led->setPixelDimmed(0, 255, intensity * 3 / 4, 0, LED_BRIGHTNESS);
   }
 }
 
@@ -225,10 +226,10 @@ void LedStatus::updateTempOverheatPower() {
   
   if (cycle < 20) {
     uint8_t intensity = (cycle * 255) / 20;
-    led->setPixel(0, intensity, 0, 0);
+    led->setPixelDimmed(0, intensity, 0, 0, LED_BRIGHTNESS);
   } else {
     uint8_t intensity = ((40 - cycle) * 255) / 20;
-    led->setPixel(0, intensity, 0, 0);
+    led->setPixelDimmed(0, intensity, 0, 0, LED_BRIGHTNESS);
   }
 }
 
@@ -236,9 +237,9 @@ void LedStatus::updateTempOverheatLed1() {
   uint8_t cycle = animationCounter % 20;
   
   if (cycle < 10) {
-    led->setPixel(0, 255, 100, 0);
+    led->setPixelDimmed(0, 255, 100, 0, LED_BRIGHTNESS);
   } else {
-    led->setPixel(0, 200, 50, 0);
+    led->setPixelDimmed(0, 200, 50, 0, LED_BRIGHTNESS);
   }
 }
 
@@ -246,9 +247,9 @@ void LedStatus::updateTempOverheatLed2() {
   uint8_t cycle = animationCounter % 20;
   
   if (cycle < 10) {
-    led->setPixel(0, 150, 0, 255);
+    led->setPixelDimmed(0, 150, 0, 255, LED_BRIGHTNESS);
   } else {
-    led->setPixel(0, 100, 0, 200);
+    led->setPixelDimmed(0, 100, 0, 200, LED_BRIGHTNESS);
   }
 }
 

@@ -15,7 +15,10 @@
 class LM75A {
 private:
   uint8_t deviceAddr;
+  uint8_t sdaPin;
+  uint8_t sclPin;
   bool checkConnection();
+  void resetBus();
 
 public:
   LM75A(uint8_t address);

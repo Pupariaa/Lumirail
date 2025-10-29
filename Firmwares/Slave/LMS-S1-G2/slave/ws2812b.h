@@ -21,6 +21,7 @@ public:
   bool begin();
   void setPixel(uint8_t index, uint8_t r, uint8_t g, uint8_t b);
   void setPixel(uint8_t index, uint32_t color);
+  void setPixelDimmed(uint8_t index, uint8_t r, uint8_t g, uint8_t b, uint8_t brightness);
   void clear();
   void show();
   uint8_t getNumLeds() { return numLeds; }

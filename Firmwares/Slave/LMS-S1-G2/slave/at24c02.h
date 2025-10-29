@@ -10,7 +10,10 @@
 class AT24C02 {
 private:
   uint8_t deviceAddr;
+  uint8_t sdaPin;
+  uint8_t sclPin;
   bool checkConnection();
+  void resetBus();
 
 public:
   AT24C02(uint8_t address = AT24C02_ADDR);
