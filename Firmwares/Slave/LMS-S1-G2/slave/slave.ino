@@ -51,8 +51,8 @@ void scanI2C() {
       else if (address == 0x4C) deviceName = "LM75A Power";
       else if (address == 0x48) deviceName = "LM75A LED1";
       else if (address == 0x4E) deviceName = "LM75A LED2";
-      else if (address == 0x68) deviceName = "TLC59116IPWR #1";
-      else if (address == 0x61) deviceName = "TLC59116IPWR #2";
+      else if (address == 0x60) deviceName = "TLC59116IPWR #1";
+      else if (address == 0x68) deviceName = "TLC59116IPWR #2";
       
       Serial.print("  [0x");
       if (address < 16) Serial.print("0");
