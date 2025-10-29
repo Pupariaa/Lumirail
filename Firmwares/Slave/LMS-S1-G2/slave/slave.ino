@@ -265,68 +265,90 @@ void setup() {
     // Temporary: Configure serial number and model (one-time setup)
     if (ENABLE_EEPROM_CONFIG) {
       Serial.println("\n=== Configuring EEPROM (ONE-TIME SETUP) ===");
+      Serial.println("FORCING OVERWRITE - Will write new values regardless of existing data");
       
-      // Check what's currently stored
-      char currentSerial[9];
-      char currentModel[9];
+      // Check what's currently stored (for info only)
+      char currentSerial[9] = {0};
+      char currentModel[9] = {0};
       bool hasSerial = eepromConfig.getSerialNumber(currentSerial, 9);
       bool hasModel = eepromConfig.getModel(currentModel, 9);
       
+      Serial.println("\n--- Current EEPROM contents (will be overwritten) ---");
       if (hasSerial) {
-        Serial.print("Current serial number in EEPROM: ");
+        Serial.print("  Current serial: ");
         Serial.println(currentSerial);
+      } else {
+        Serial.println("  Current serial: Not set");
       }
       if (hasModel) {
-        Serial.print("Current model in EEPROM: ");
+        Serial.print("  Current model: ");
         Serial.println(currentModel);
+      } else {
+        Serial.println("  Current model: Not set");
       }
       
       // FORCE write (overwrite existing data)
-      Serial.println("Writing new values (FORCING overwrite)...");
+      Serial.println("\n--- Writing new values (FORCING overwrite) ---");
       
-      const char* serial = "28F028G";  // CHANGE THIS to your serial number
-      if (eepromConfig.setSerialNumber(serial)) {
-        Serial.print("OK: Serial number set to: ");
-        Serial.println(serial);
-      } else {
-        Serial.println("ERROR: Failed to set serial number");
-      }
+      const char* serial = "28F028G";  // CHANGE THIS to your serial number (max 7 chars)
+      Serial.print("Attempting to write serial: ");
+      Serial.println(serial);
+      bool serialOk = eepromConfig.setSerialNumber(serial);
       
-      const char* model = "LMS-S1-G2";  // CHANGE THIS to your model name
-      if (eepromConfig.setModel(model)) {
-        Serial.print("OK: Model set to: ");
-        Serial.println(model);
-      } else {
-        Serial.println("ERROR: Failed to set model");
-      }
+      const char* model = "LMS-S1G2";  // CHANGE THIS to your model name (max 7 chars! "LMS-S1-G2" is 9, shortened to 7)
+      Serial.print("Attempting to write model: ");
+      Serial.println(model);
+      bool modelOk = eepromConfig.setModel(model);
+      
+      // Wait a bit for EEPROM to settle
+      delay(50);
       
       // Verify what was written
-      Serial.println("\nVerifying stored values...");
-      char verifySerial[9];
-      char verifyModel[9];
-      if (eepromConfig.getSerialNumber(verifySerial, 9)) {
-        Serial.print("Stored Serial: '");
+      Serial.println("\n--- Verifying stored values ---");
+      char verifySerial[9] = {0};
+      char verifyModel[9] = {0};
+      bool gotSerial = eepromConfig.getSerialNumber(verifySerial, 9);
+      bool gotModel = eepromConfig.getModel(verifyModel, 9);
+      
+      if (gotSerial) {
+        Serial.print("  Read Serial: '");
         Serial.print(verifySerial);
         Serial.print("' - ");
         if (strcmp(verifySerial, serial) == 0) {
-          Serial.println("MATCH!");
+          Serial.println("MATCH! ✓");
         } else {
-          Serial.println("MISMATCH!");
+          Serial.println("MISMATCH! ✗");
+          Serial.print("    Expected: '");
+          Serial.print(serial);
+          Serial.println("'");
         }
+      } else {
+        Serial.println("  FAILED to read serial!");
       }
-      if (eepromConfig.getModel(verifyModel, 9)) {
-        Serial.print("Stored Model: '");
+      
+      if (gotModel) {
+        Serial.print("  Read Model: '");
         Serial.print(verifyModel);
         Serial.print("' - ");
         if (strcmp(verifyModel, model) == 0) {
-          Serial.println("MATCH!");
+          Serial.println("MATCH! ✓");
         } else {
-          Serial.println("MISMATCH!");
+          Serial.println("MISMATCH! ✗");
+          Serial.print("    Expected: '");
+          Serial.print(model);
+          Serial.println("'");
         }
+      } else {
+        Serial.println("  FAILED to read model!");
       }
       
       Serial.println("\n=== EEPROM Configuration Complete ===");
-      Serial.println("Set ENABLE_EEPROM_CONFIG to false and recompile!");
+      if (serialOk && modelOk && strcmp(verifySerial, serial) == 0 && strcmp(verifyModel, model) == 0) {
+        Serial.println("SUCCESS! Values written and verified.");
+        Serial.println("Set ENABLE_EEPROM_CONFIG to false and recompile!");
+      } else {
+        Serial.println("WARNING: Write may have failed or verification failed!");
+      }
       Serial.println();
     } else {
       // Just read and display current config
