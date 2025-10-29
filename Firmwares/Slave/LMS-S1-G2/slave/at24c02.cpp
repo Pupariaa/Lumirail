@@ -71,7 +71,9 @@ bool AT24C02::writePage(uint8_t startAddress, uint8_t* data, uint8_t length) {
 
   while (bytesWritten < length) {
     uint8_t currentAddr = startAddress + bytesWritten;
-    uint8_t bytesToWrite = min((uint8_t)(pageEnd - currentAddr), (uint8_t)(length - bytesWritten));
+    uint8_t pageRemain = pageEnd - currentAddr;
+    uint8_t dataRemain = length - bytesWritten;
+    uint8_t bytesToWrite = (pageRemain < dataRemain) ? pageRemain : dataRemain;
 
     Wire.beginTransmission(deviceAddr);
     Wire.write(currentAddr);
