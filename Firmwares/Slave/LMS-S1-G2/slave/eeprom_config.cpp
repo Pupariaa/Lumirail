@@ -20,14 +20,50 @@ bool EepromConfig::setSerialNumber(const char* serial) {
   uint8_t len = strlen(serial);
   if (len > SERIAL_MAX_LEN) len = SERIAL_MAX_LEN;
   
-  uint8_t buffer[8] = {0};
+  uint8_t buffer[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   memcpy(buffer, serial, len);
-  // Fill rest with 0xFF to mark as set
-  for (uint8_t i = len; i < 8; i++) {
-    buffer[i] = 0xFF;
+  // Keep 0xFF padding for remaining bytes (already initialized)
+  
+  Serial.print("Writing serial number to EEPROM: ");
+  Serial.print(serial);
+  Serial.print(" (");
+  for (uint8_t i = 0; i < 8; i++) {
+    Serial.print("0x");
+    if (buffer[i] < 16) Serial.print("0");
+    Serial.print(buffer[i], HEX);
+    if (i < 7) Serial.print(" ");
+  }
+  Serial.println(")");
+  
+  bool result = eeprom->writePage(EEPROM_SERIAL_START, buffer, 8);
+  delay(10);  // Ensure write completes
+  
+  // Verify write
+  uint8_t verify[8];
+  if (eeprom->readBuffer(EEPROM_SERIAL_START, verify, 8)) {
+    bool match = true;
+    for (uint8_t i = 0; i < 8; i++) {
+      if (verify[i] != buffer[i]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) {
+      Serial.println("Serial number verified OK");
+    } else {
+      Serial.print("ERROR: Serial number verification failed! Read: ");
+      for (uint8_t i = 0; i < 8; i++) {
+        Serial.print("0x");
+        if (verify[i] < 16) Serial.print("0");
+        Serial.print(verify[i], HEX);
+        if (i < 7) Serial.print(" ");
+      }
+      Serial.println();
+      result = false;
+    }
   }
   
-  return eeprom->writePage(EEPROM_SERIAL_START, buffer, 8);
+  return result;
 }
 
 bool EepromConfig::setModel(const char* model) {
@@ -36,14 +72,50 @@ bool EepromConfig::setModel(const char* model) {
   uint8_t len = strlen(model);
   if (len > MODEL_MAX_LEN) len = MODEL_MAX_LEN;
   
-  uint8_t buffer[8] = {0};
+  uint8_t buffer[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   memcpy(buffer, model, len);
-  // Fill rest with 0xFF to mark as set
-  for (uint8_t i = len; i < 8; i++) {
-    buffer[i] = 0xFF;
+  // Keep 0xFF padding for remaining bytes (already initialized)
+  
+  Serial.print("Writing model to EEPROM: ");
+  Serial.print(model);
+  Serial.print(" (");
+  for (uint8_t i = 0; i < 8; i++) {
+    Serial.print("0x");
+    if (buffer[i] < 16) Serial.print("0");
+    Serial.print(buffer[i], HEX);
+    if (i < 7) Serial.print(" ");
+  }
+  Serial.println(")");
+  
+  bool result = eeprom->writePage(EEPROM_MODEL_START, buffer, 8);
+  delay(10);  // Ensure write completes
+  
+  // Verify write
+  uint8_t verify[8];
+  if (eeprom->readBuffer(EEPROM_MODEL_START, verify, 8)) {
+    bool match = true;
+    for (uint8_t i = 0; i < 8; i++) {
+      if (verify[i] != buffer[i]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) {
+      Serial.println("Model verified OK");
+    } else {
+      Serial.print("ERROR: Model verification failed! Read: ");
+      for (uint8_t i = 0; i < 8; i++) {
+        Serial.print("0x");
+        if (verify[i] < 16) Serial.print("0");
+        Serial.print(verify[i], HEX);
+        if (i < 7) Serial.print(" ");
+      }
+      Serial.println();
+      result = false;
+    }
   }
   
-  return eeprom->writePage(EEPROM_MODEL_START, buffer, 8);
+  return result;
 }
 
 bool EepromConfig::getSerialNumber(char* buffer, uint8_t len) {
@@ -53,6 +125,16 @@ bool EepromConfig::getSerialNumber(char* buffer, uint8_t len) {
   if (!eeprom->readBuffer(EEPROM_SERIAL_START, data, 8)) {
     return false;
   }
+  
+  // Debug: print raw bytes
+  Serial.print("EEPROM Serial raw bytes: ");
+  for (uint8_t i = 0; i < 8; i++) {
+    Serial.print("0x");
+    if (data[i] < 16) Serial.print("0");
+    Serial.print(data[i], HEX);
+    if (i < 7) Serial.print(" ");
+  }
+  Serial.println();
   
   uint8_t copyLen = 8;
   if (copyLen > len - 1) copyLen = len - 1;
@@ -68,6 +150,10 @@ bool EepromConfig::getSerialNumber(char* buffer, uint8_t len) {
       break;
     }
   }
+  
+  Serial.print("EEPROM Serial parsed: '");
+  Serial.print(buffer);
+  Serial.println("'");
   
   return true;
 }
@@ -80,6 +166,16 @@ bool EepromConfig::getModel(char* buffer, uint8_t len) {
     return false;
   }
   
+  // Debug: print raw bytes
+  Serial.print("EEPROM Model raw bytes: ");
+  for (uint8_t i = 0; i < 8; i++) {
+    Serial.print("0x");
+    if (data[i] < 16) Serial.print("0");
+    Serial.print(data[i], HEX);
+    if (i < 7) Serial.print(" ");
+  }
+  Serial.println();
+  
   uint8_t copyLen = 8;
   if (copyLen > len - 1) copyLen = len - 1;
   
@@ -94,6 +190,10 @@ bool EepromConfig::getModel(char* buffer, uint8_t len) {
       break;
     }
   }
+  
+  Serial.print("EEPROM Model parsed: '");
+  Serial.print(buffer);
+  Serial.println("'");
   
   return true;
 }

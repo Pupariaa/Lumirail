@@ -268,7 +268,7 @@ void setup() {
       
       // Set serial number (7 chars max + null)
       if (!eepromConfig.isSerialSet()) {
-        const char* serial = "LMS-S1-001";  // CHANGE THIS to your serial number
+        const char* serial = "28F028G";  // CHANGE THIS to your serial number
         if (eepromConfig.setSerialNumber(serial)) {
           Serial.print("OK: Serial number set to: ");
           Serial.println(serial);

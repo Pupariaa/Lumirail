@@ -146,7 +146,7 @@ bool AT24C02::writePage(uint8_t startAddress, uint8_t* data, uint8_t length) {
       delay(1);
     }
     
-    delay(5);
+    delay(10);  // Increased delay for EEPROM write cycle (AT24C02 needs 5ms max, 10ms is safe)
     bytesWritten += bytesToWrite;
     
     if (currentAddr + bytesToWrite >= pageEnd) {
@@ -154,6 +154,9 @@ bool AT24C02::writePage(uint8_t startAddress, uint8_t* data, uint8_t length) {
       pageEnd += AT24C02_PAGE_SIZE;
     }
   }
+  
+  // Additional delay at end to ensure all writes complete
+  delay(10);
   
   return true;
 }
