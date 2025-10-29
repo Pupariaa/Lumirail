@@ -48,8 +48,8 @@ void scanI2C() {
       else if (address == 0x4C) deviceName = "LM75A Power";
       else if (address == 0x48) deviceName = "LM75A LED1";
       else if (address == 0x4E) deviceName = "LM75A LED2";
-      else if (address == 0x60) deviceName = "TLC59116IPWR #1";
-      else if (address == 0x61) deviceName = "TLC59116IPWR #2";
+      else if (address == 0x68) deviceName = "TLC59116IPWR #1";
+      else if (address == 0x6B) deviceName = "TLC59116IPWR #2";
       
       Serial.print("  [0x");
       if (address < 16) Serial.print("0");
@@ -131,7 +131,7 @@ bool checkComponents() {
   bool tlc2Found = false;
   
   for (uint8_t retry = 0; retry < 3; retry++) {
-    Wire.beginTransmission(0x60);
+    Wire.beginTransmission(0x68);
     uint8_t error1 = Wire.endTransmission();
     if (error1 == 0) {
       tlc1Found = true;
@@ -141,7 +141,7 @@ bool checkComponents() {
   }
   
   for (uint8_t retry = 0; retry < 3; retry++) {
-    Wire.beginTransmission(0x61);
+    Wire.beginTransmission(0x6B);
     uint8_t error2 = Wire.endTransmission();
     if (error2 == 0) {
       tlc2Found = true;
@@ -151,15 +151,15 @@ bool checkComponents() {
   }
   
   if (tlc1Found) {
-    Serial.println("OK: TLC59116IPWR #1 (0x60) connected");
+    Serial.println("OK: TLC59116IPWR #1 (0x68) connected");
   } else {
-    Serial.println("WARNING: TLC59116IPWR #1 (0x60) not found");
+    Serial.println("WARNING: TLC59116IPWR #1 (0x68) not found");
   }
   
   if (tlc2Found) {
-    Serial.println("OK: TLC59116IPWR #2 (0x61) connected");
+    Serial.println("OK: TLC59116IPWR #2 (0x6B) connected");
   } else {
-    Serial.println("WARNING: TLC59116IPWR #2 (0x61) not found");
+    Serial.println("WARNING: TLC59116IPWR #2 (0x6B) not found");
   }
   
   return allOk;
