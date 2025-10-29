@@ -5,6 +5,7 @@
 #include "ws2812b.h"
 #include "button.h"
 #include "led_status.h"
+#include "tlc59116.h"
 #include <esp_wifi.h>
 
 #define I2C_SDA_PIN 18
@@ -19,6 +20,8 @@ LM75A tempLed2(LM75A_ADDR_LED2);
 WS2812B statusLed(WS2812B_PIN, 1);
 LedStatus ledStatus(&statusLed);
 Button button(BUTTON_PIN, 1000);
+TLC59116 tlc1(TLC59116_ADDR_1);
+TLC59116 tlc2(TLC59116_ADDR_2);
 
 uint32_t lastTempCheck = 0;
 
@@ -165,6 +168,39 @@ bool checkComponents() {
   return allOk;
 }
 
+void testTLC59116() {
+  Serial.println("Testing TLC59116IPWR controllers...");
+  
+  // Initialize controllers
+  bool tlc1Ok = tlc1.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+  bool tlc2Ok = tlc2.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+  
+  if (!tlc1Ok && !tlc2Ok) {
+    Serial.println("ERROR: Both TLC59116IPWR controllers failed to initialize");
+    return;
+  }
+  
+  Serial.println("Turning ON all LEDs...");
+  if (tlc1Ok) {
+    tlc1.setAllPWM(0xFF);
+  }
+  if (tlc2Ok) {
+    tlc2.setAllPWM(0xFF);
+  }
+  delay(500);
+  
+  Serial.println("Turning OFF all LEDs...");
+  if (tlc1Ok) {
+    tlc1.allOff();
+  }
+  if (tlc2Ok) {
+    tlc2.allOff();
+  }
+  delay(500);
+  
+  Serial.println("TLC59116IPWR test complete");
+}
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -188,6 +224,9 @@ void setup() {
     Serial.println("All I2C components detected successfully");
     ledStatus.setState(LED_STATE_WAITING_PAIR);
   }
+  
+  // Test TLC59116IPWR controllers
+  testTLC59116();
   
   espnowHandler.init();
   
