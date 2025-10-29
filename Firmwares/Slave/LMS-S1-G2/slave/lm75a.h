@@ -17,6 +17,7 @@ private:
   uint8_t deviceAddr;
   uint8_t sdaPin;
   uint8_t sclPin;
+  bool devicePresent;
   bool checkConnection();
   void resetBus();
 
@@ -25,6 +26,7 @@ public:
   bool begin(uint8_t sdaPin = 18, uint8_t sclPin = 19);
   float readTemperature();
   bool isConnected();
+  bool isPresent() { return devicePresent; }
   bool writeConfig(uint8_t config);
   uint8_t readConfig();
 };

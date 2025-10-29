@@ -107,9 +107,21 @@ void checkTemperatures() {
   }
   lastTempCheck = now;
   
-  float tempP = tempPower.readTemperature();
-  float tempL1 = tempLed1.readTemperature();
-  float tempL2 = tempLed2.readTemperature();
+  float tempP = -999.0;
+  float tempL1 = -999.0;
+  float tempL2 = -999.0;
+  
+  if (tempPower.isPresent()) {
+    tempP = tempPower.readTemperature();
+  }
+  
+  if (tempLed1.isPresent()) {
+    tempL1 = tempLed1.readTemperature();
+  }
+  
+  if (tempLed2.isPresent()) {
+    tempL2 = tempLed2.readTemperature();
+  }
   
   if (tempP > TEMP_THRESHOLD) {
     Serial.print("WARNING: Power temperature excessive: ");

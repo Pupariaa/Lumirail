@@ -1,6 +1,6 @@
 #include "lm75a.h"
 
-LM75A::LM75A(uint8_t address) : deviceAddr(address), sdaPin(18), sclPin(19) {
+LM75A::LM75A(uint8_t address) : deviceAddr(address), sdaPin(18), sclPin(19), devicePresent(false) {
 }
 
 void LM75A::resetBus() {
@@ -16,7 +16,8 @@ bool LM75A::begin(uint8_t sdaPin, uint8_t sclPin) {
   Wire.begin(sdaPin, sclPin);
   Wire.setClock(100000);
   delay(10);
-  return checkConnection();
+  devicePresent = checkConnection();
+  return devicePresent;
 }
 
 bool LM75A::checkConnection() {
@@ -35,6 +36,10 @@ bool LM75A::isConnected() {
 }
 
 float LM75A::readTemperature() {
+  if (!devicePresent) {
+    return -999.0;
+  }
+  
   for (uint8_t retry = 0; retry < 3; retry++) {
     Wire.beginTransmission(deviceAddr);
     Wire.write(LM75A_TEMP_REG);

@@ -1,6 +1,6 @@
 #include "at24c02.h"
 
-AT24C02::AT24C02(uint8_t address) : deviceAddr(address), sdaPin(18), sclPin(19) {
+AT24C02::AT24C02(uint8_t address) : deviceAddr(address), sdaPin(18), sclPin(19), devicePresent(false) {
 }
 
 void AT24C02::resetBus() {
@@ -16,7 +16,8 @@ bool AT24C02::begin(uint8_t sdaPin, uint8_t sclPin) {
   Wire.begin(sdaPin, sclPin);
   Wire.setClock(100000);
   delay(10);
-  return checkConnection();
+  devicePresent = checkConnection();
+  return devicePresent;
 }
 
 bool AT24C02::checkConnection() {
@@ -35,7 +36,7 @@ bool AT24C02::isConnected() {
 }
 
 bool AT24C02::writeByte(uint8_t address, uint8_t data) {
-  if (address >= AT24C02_MEMORY_SIZE) {
+  if (!devicePresent || address >= AT24C02_MEMORY_SIZE) {
     return false;
   }
 
@@ -64,7 +65,7 @@ bool AT24C02::writeByte(uint8_t address, uint8_t data) {
 }
 
 uint8_t AT24C02::readByte(uint8_t address) {
-  if (address >= AT24C02_MEMORY_SIZE) {
+  if (!devicePresent || address >= AT24C02_MEMORY_SIZE) {
     return 0xFF;
   }
 

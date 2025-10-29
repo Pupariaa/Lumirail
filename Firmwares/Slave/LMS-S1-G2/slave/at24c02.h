@@ -12,6 +12,7 @@ private:
   uint8_t deviceAddr;
   uint8_t sdaPin;
   uint8_t sclPin;
+  bool devicePresent;
   bool checkConnection();
   void resetBus();
 
@@ -23,6 +24,7 @@ public:
   bool writePage(uint8_t startAddress, uint8_t* data, uint8_t length);
   bool readBuffer(uint8_t startAddress, uint8_t* buffer, uint8_t length);
   bool isConnected();
+  bool isPresent() { return devicePresent; }
 };
 
 #endif
