@@ -90,6 +90,45 @@ bool EspNowHandler::sendPing(const uint8_t* mac) {
   return (result == ESP_OK);
 }
 
+bool EspNowHandler::sendPairRequest(const uint8_t* mac) {
+  EspNowMessage msg;
+  msg.version = 1;
+  msg.type = MSG_PAIR_REQUEST;
+  msg.sequence = sequenceCounter++;
+  msg.payloadLength = 0;
+  msg.checksum = calculateChecksum(msg);
+  
+  esp_now_peer_info_t peerInfo;
+  memcpy(peerInfo.peer_addr, mac, 6);
+  peerInfo.channel = 1;
+  peerInfo.ifidx = WIFI_IF_AP;
+  peerInfo.encrypt = false;
+  
+  esp_err_t addResult = esp_now_add_peer(&peerInfo);
+  if (addResult != ESP_OK && addResult != ESP_ERR_ESPNOW_EXIST) {
+    Serial.print("ERROR: Failed to add peer for pair request: ");
+    Serial.println(esp_err_to_name(addResult));
+    return false;
+  }
+  
+  esp_err_t sendResult = esp_now_send(mac, (uint8_t *)&msg, sizeof(EspNowMessage));
+  
+  if (sendResult == ESP_OK || sendResult == ESP_ERR_ESPNOW_IF) {
+    Serial.print("PAIR REQUEST sent to ");
+    for (int i = 0; i < 6; i++) {
+      Serial.printf("%02X", mac[i]);
+      if (i < 5) Serial.print(":");
+    }
+    Serial.println();
+    return true;
+  } else {
+    Serial.print("ERROR: Failed to send pair request: ");
+    Serial.println(esp_err_to_name(sendResult));
+    esp_now_del_peer(mac);
+    return false;
+  }
+}
+
 bool EspNowHandler::sendCommand(const uint8_t* mac, const char* command) {
   EspNowMessage msg;
   msg.version = 1;
@@ -187,6 +226,9 @@ void EspNowHandler::onDataReceive(const esp_now_recv_info_t *info, const uint8_t
       break;
     case MSG_NACK:
       slaveManager.handleNack(mac_addr, msg);
+      break;
+    case MSG_PAIR_RESPONSE:
+      slaveManager.handlePairResponse(mac_addr, msg);
       break;
   }
 }

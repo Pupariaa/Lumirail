@@ -121,7 +121,8 @@ void EspNowHandler::sendPairResponse(const uint8_t* mac, bool accepted) {
   
   esp_now_peer_info_t peerInfo;
   memcpy(peerInfo.peer_addr, mac, 6);
-  peerInfo.channel = 0;
+  peerInfo.channel = 1;
+  peerInfo.ifidx = WIFI_IF_STA;
   peerInfo.encrypt = false;
   esp_now_add_peer(&peerInfo);
   
@@ -220,7 +221,8 @@ void EspNowHandler::handlePairRequest(const uint8_t* mac, EspNowMessage* msg) {
   
   // Accept pairing
   if (currentState == STATE_UNPAIRED) {
-    currentState = STATE_DISCOVERED;
+    currentState = STATE_LINKED;
+    lastMasterContact = millis();
     
     // Store authorized MAC if not already set
     if (eepromConfig && authorized) {
@@ -247,18 +249,25 @@ void EspNowHandler::handlePingRequest(const uint8_t* mac, EspNowMessage* msg) {
   
   esp_now_peer_info_t peerInfo;
   memcpy(peerInfo.peer_addr, mac, 6);
-  peerInfo.channel = 0;
+  peerInfo.channel = 1;
+  peerInfo.ifidx = WIFI_IF_STA;
   peerInfo.encrypt = false;
-  esp_now_add_peer(&peerInfo);
+  
+  esp_err_t addResult = esp_now_add_peer(&peerInfo);
+  if (addResult != ESP_OK && addResult != ESP_ERR_ESPNOW_EXIST) {
+    Serial.print("ERROR: Failed to add peer for ping response: ");
+    Serial.println(esp_err_to_name(addResult));
+    return;
+  }
   
   esp_err_t result = esp_now_send(mac, (uint8_t *)&response, sizeof(EspNowMessage));
-  if (result == ESP_OK) {
-    Serial.println("PING response sent");
-  } else {
-    Serial.println("ERROR: Failed to send PING response");
+  if (result != ESP_OK && result != ESP_ERR_ESPNOW_IF) {
+    Serial.print("ERROR: Failed to send PING response: ");
+    Serial.println(esp_err_to_name(result));
   }
   
   esp_now_del_peer(mac);
+  lastMasterContact = millis();
 }
 
 void EspNowHandler::handleCommand(const uint8_t* mac, EspNowMessage* msg) {

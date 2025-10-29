@@ -123,6 +123,47 @@ void SlaveManager::handleNack(const uint8_t* mac, EspNowMessage* msg) {
   Serial.println("NACK received");
 }
 
+void SlaveManager::handlePairResponse(const uint8_t* mac, EspNowMessage* msg) {
+  int slaveId = findSlaveByMAC(mac);
+  if (slaveId < 0) {
+    Serial.println("WARNING: Pair response from unknown slave");
+    return;
+  }
+  
+  if (msg->payloadLength < 1) {
+    Serial.println("ERROR: Invalid pair response (no payload)");
+    return;
+  }
+  
+  bool accepted = (msg->payload[0] == 1);
+  
+  if (accepted) {
+    if (!slaves[slaveId].linked) {
+      slaves[slaveId].linked = 1;
+      slaves[slaveId].state = STATE_PAIRED;
+      stats.pairedCount++;
+      
+      Serial.print("PAIRED: ID ");
+      Serial.print(slaveId);
+      Serial.print(" MAC ");
+      for (int i = 0; i < 6; i++) {
+        Serial.printf("%02X", slaves[slaveId].mac[i]);
+        if (i < 5) Serial.print(":");
+      }
+      Serial.println();
+    }
+  } else {
+    Serial.print("PAIR REJECTED by slave ID ");
+    Serial.print(slaveId);
+    Serial.print(" MAC ");
+    for (int i = 0; i < 6; i++) {
+      Serial.printf("%02X", slaves[slaveId].mac[i]);
+      if (i < 5) Serial.print(":");
+    }
+    Serial.println();
+  }
+}
+
 void SlaveManager::checkSlaveTimeouts() {
   uint64_t now = millis();
   
@@ -180,11 +221,7 @@ void SlaveManager::pairSlave(int slaveId) {
     return;
   }
   
-  slaves[slaveId].linked = 1;
-  slaves[slaveId].state = STATE_PAIRED;
-  stats.pairedCount++;
-  
-  Serial.print("PAIRED: ID ");
+  Serial.print("Sending pair request to slave ID ");
   Serial.print(slaveId);
   Serial.print(" MAC ");
   for (int i = 0; i < 6; i++) {
@@ -192,6 +229,11 @@ void SlaveManager::pairSlave(int slaveId) {
     if (i < 5) Serial.print(":");
   }
   Serial.println();
+  
+  if (!espnowHandler.sendPairRequest(slaves[slaveId].mac)) {
+    Serial.println("ERROR: Failed to send pair request");
+    return;
+  }
 }
 
 void SlaveManager::unpairSlave(int slaveId) {

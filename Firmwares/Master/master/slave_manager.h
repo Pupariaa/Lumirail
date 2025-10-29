@@ -11,6 +11,7 @@ public:
   
   void handleSlaveStatus(const uint8_t* mac, EspNowMessage* msg);
   void handlePingResponse(const uint8_t* mac, EspNowMessage* msg);
+  void handlePairResponse(const uint8_t* mac, EspNowMessage* msg);
   void handleAck(const uint8_t* mac, EspNowMessage* msg);
   void handleNack(const uint8_t* mac, EspNowMessage* msg);
   
