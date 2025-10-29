@@ -2,6 +2,8 @@
 #include "espnow_handler.h"
 #include "at24c02.h"
 #include "lm75a.h"
+#include "ws2812b.h"
+#include "button.h"
 #include <esp_wifi.h>
 
 #define I2C_SDA_PIN 18
@@ -11,6 +13,8 @@ AT24C02 eeprom(AT24C02_ADDR);
 LM75A tempPower(LM75A_ADDR_POWER);
 LM75A tempLed1(LM75A_ADDR_LED1);
 LM75A tempLed2(LM75A_ADDR_LED2);
+WS2812B statusLed(WS2812B_PIN, 1);
+Button button(BUTTON_PIN, 1000);
 
 bool checkComponents() {
   bool allOk = true;
@@ -60,6 +64,14 @@ void setup() {
     Serial.println("All I2C components detected successfully");
   }
   
+  statusLed.begin();
+  statusLed.setPixel(0, 0, 255, 0);
+  statusLed.show();
+  Serial.println("OK: WS2812B LED initialized");
+  
+  button.begin();
+  Serial.println("OK: Button initialized");
+  
   espnowHandler.init();
   
   uint8_t mac[6];
@@ -75,6 +87,20 @@ void setup() {
 }
 
 void loop() {
+  button.update();
+  
+  if (button.isPressed()) {
+    Serial.println("Button pressed");
+  }
+  
+  if (button.isHeld()) {
+    Serial.println("Button held");
+  }
+  
+  if (button.isReleased()) {
+    Serial.println("Button released");
+  }
+  
   espnowHandler.update();
   delay(50);
 }
