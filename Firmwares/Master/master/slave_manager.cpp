@@ -6,6 +6,7 @@ SlaveManager slaveManager;
 
 SlaveManager::SlaveManager() {
   memset(&stats, 0, sizeof(CurrentStats));
+  lastScan = 0;
   for (int i = 0; i < MAX_SLAVES; i++) {
     memset(&slaves[i], 0, sizeof(SlaveInfo));
     slaves[i].state = STATE_UNPAIRED;
@@ -23,6 +24,13 @@ void SlaveManager::init() {
 
 void SlaveManager::update() {
   checkSlaveTimeouts();
+  
+  // Periodic scan every 5 seconds
+  uint64_t now = millis();
+  if (now - lastScan >= 5000) {
+    scanSlaves();
+    lastScan = now;
+  }
 }
 
 void SlaveManager::handleSlaveStatus(const uint8_t* mac, EspNowMessage* msg) {
@@ -301,6 +309,75 @@ void SlaveManager::printStats() {
   Serial.print(stats.messagesReceived);
   Serial.print(" Lost=");
   Serial.println(stats.messagesLost);
+}
+
+void SlaveManager::scanSlaves() {
+  Serial.println("\n=== SLAVE SCAN ===");
+  
+  uint8_t discoveredCount = 0;
+  uint8_t pairedCount = 0;
+  
+  // Count and display discovered slaves
+  Serial.println("Available (unpaired):");
+  for (int i = 0; i < MAX_SLAVES; i++) {
+    if (slaves[i].state == STATE_DISCOVERED && !slaves[i].linked) {
+      discoveredCount++;
+      Serial.print("  ID ");
+      Serial.print(i);
+      Serial.print(": MAC ");
+      for (int j = 0; j < 6; j++) {
+        Serial.printf("%02X", slaves[i].mac[j]);
+        if (j < 5) Serial.print(":");
+      }
+      Serial.print(" RSSI ");
+      Serial.print(slaves[i].rssi);
+      Serial.print(" Last seen ");
+      Serial.print((millis() - slaves[i].lastSeen) / 1000);
+      Serial.println("s ago");
+    }
+  }
+  
+  if (discoveredCount == 0) {
+    Serial.println("  None");
+  }
+  
+  // Count and display paired slaves (and ping them)
+  Serial.println("Paired:");
+  for (int i = 0; i < MAX_SLAVES; i++) {
+    if (slaves[i].state == STATE_PAIRED && slaves[i].linked) {
+      pairedCount++;
+      Serial.print("  ID ");
+      Serial.print(i);
+      Serial.print(": MAC ");
+      for (int j = 0; j < 6; j++) {
+        Serial.printf("%02X", slaves[i].mac[j]);
+        if (j < 5) Serial.print(":");
+      }
+      Serial.print(" RSSI ");
+      Serial.print(slaves[i].rssi);
+      Serial.print(" Last seen ");
+      Serial.print((millis() - slaves[i].lastSeen) / 1000);
+      Serial.print("s ago");
+      
+      // Ping paired slaves to verify they're still responsive
+      Serial.print(" [PING...");
+      espnowHandler.sendPing(slaves[i].mac);
+      Serial.print("]");
+      
+      Serial.println();
+    }
+  }
+  
+  if (pairedCount == 0) {
+    Serial.println("  None");
+  }
+  
+  Serial.print("Summary: ");
+  Serial.print(discoveredCount);
+  Serial.print(" available, ");
+  Serial.print(pairedCount);
+  Serial.println(" paired");
+  Serial.println("=== END SCAN ===\n");
 }
 
 int SlaveManager::findSlaveByMAC(const uint8_t* mac) {

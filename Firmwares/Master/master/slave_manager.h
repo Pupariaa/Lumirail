@@ -22,6 +22,7 @@ public:
   void printAllSlaves();
   void printPairedSlaves();
   void printStats();
+  void scanSlaves();
   
   SlaveInfo* getSlaves() { return slaves; }
   CurrentStats* getStats() { return &stats; }
@@ -29,6 +30,7 @@ public:
 private:
   SlaveInfo slaves[MAX_SLAVES];
   CurrentStats stats;
+  uint64_t lastScan;
   
   void checkSlaveTimeouts();
   int findSlaveByMAC(const uint8_t* mac);
