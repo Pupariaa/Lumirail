@@ -3,8 +3,8 @@
 
 #include <Wire.h>
 
-#define TLC59116_ADDR_1 0x68
-#define TLC59116_ADDR_2 0x6B
+#define TLC59116_ADDR_1 0x60
+#define TLC59116_ADDR_2 0x68
 
 // Register addresses
 #define TLC59116_MODE1 0x00
