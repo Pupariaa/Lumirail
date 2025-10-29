@@ -201,23 +201,27 @@ bool EepromConfig::getModel(char* buffer, uint8_t len) {
 bool EepromConfig::setAuthorizedMAC(const uint8_t* mac) {
   if (!initialized || !mac) return false;
   
-  uint8_t buffer[8] = {0};
+  uint8_t buffer[16] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   memcpy(buffer, mac, 6);
-  buffer[6] = 0xFF;  // Padding
-  buffer[7] = 0xFF;  // Padding
+  // Bytes 6-15 reserved for future use (keep as 0xFF)
   
-  return eeprom->writePage(EEPROM_MAC_START, buffer, 8);
+  // Write 2 pages (16 bytes)
+  bool page1 = eeprom->writePage(EEPROM_MAC_START, buffer, 8);
+  delay(10);
+  bool page2 = eeprom->writePage(EEPROM_MAC_START + 8, &buffer[8], 8);
+  
+  return page1 && page2;
 }
 
 bool EepromConfig::getAuthorizedMAC(uint8_t* mac) {
   if (!initialized || !mac) return false;
   
-  uint8_t data[8];
-  if (!eeprom->readBuffer(EEPROM_MAC_START, data, 8)) {
+  uint8_t data[16];
+  if (!eeprom->readBuffer(EEPROM_MAC_START, data, 16)) {
     return false;
   }
   
-  // Check if MAC is set (not all 0xFF or 0x00)
+  // Check if MAC is set (not all 0xFF or 0x00 in first 6 bytes)
   bool isEmpty = true;
   for (uint8_t i = 0; i < 6; i++) {
     if (data[i] != 0xFF && data[i] != 0x00) {
@@ -250,8 +254,11 @@ bool EepromConfig::isMACAuthorized(const uint8_t* mac) {
 void EepromConfig::clearAuthorizedMAC() {
   if (!initialized) return;
   
-  uint8_t empty[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  uint8_t empty[16] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
+                       0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   eeprom->writePage(EEPROM_MAC_START, empty, 8);
+  delay(10);
+  eeprom->writePage(EEPROM_MAC_START + 8, &empty[8], 8);
 }
 
 bool EepromConfig::isSerialSet() {

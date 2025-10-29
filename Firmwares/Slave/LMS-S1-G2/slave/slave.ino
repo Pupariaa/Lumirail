@@ -26,7 +26,7 @@ TLC59116 tlc1(TLC59116_ADDR_1);
 TLC59116 tlc2(TLC59116_ADDR_2);
 
 // Temporary: Set to true once to configure serial/model, then set back to false
-#define ENABLE_EEPROM_CONFIG true
+#define ENABLE_EEPROM_CONFIG false
 
 uint32_t lastTempCheck = 0;
 
@@ -295,7 +295,7 @@ void setup() {
       Serial.println(serial);
       bool serialOk = eepromConfig.setSerialNumber(serial);
       
-      const char* model = "LMS-S1G2";  // CHANGE THIS to your model name (max 7 chars! "LMS-S1-G2" is 9, shortened to 7)
+      const char* model = "LMSS1G2";  // CHANGE THIS to your model name (max 7 chars! "LMS-S1-G2" is 9, shortened to 7)
       Serial.print("Attempting to write model: ");
       Serial.println(model);
       bool modelOk = eepromConfig.setModel(model);

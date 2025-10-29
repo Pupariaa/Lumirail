@@ -5,9 +5,9 @@
 #include <stdint.h>
 
 // EEPROM layout (256 bytes total, 8 bytes per page)
-#define EEPROM_SERIAL_START  0x00  // 8 bytes: Serial number
-#define EEPROM_MODEL_START   0x08  // 8 bytes: Model name
-#define EEPROM_MAC_START     0xF8  // Last 8 bytes: Authorized master MAC (6 bytes MAC + 2 padding)
+#define EEPROM_SERIAL_START  0x00  // 8 bytes: Serial number (page 0)
+#define EEPROM_MODEL_START   0x08  // 8 bytes: Model name (page 1)
+#define EEPROM_MAC_START     0xF0  // 16 bytes: Authorized master MAC (6 bytes MAC + 10 bytes reserved for future use) (pages 30-31)
 
 #define SERIAL_MAX_LEN  7  // Null-terminated string
 #define MODEL_MAX_LEN   7  // Null-terminated string
