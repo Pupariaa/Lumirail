@@ -64,6 +64,30 @@ void WS2812B::setPixel(uint8_t index, uint8_t r, uint8_t g, uint8_t b) {
   buffer[pos] = g;
   buffer[pos + 1] = r;
   buffer[pos + 2] = b;
+  
+  static uint32_t lastDebug = 0;
+  uint32_t now = millis();
+  if (index == 0 && now - lastDebug > 500) {
+    Serial.print("setPixel[0] called - R:");
+    Serial.print(r);
+    Serial.print(" G:");
+    Serial.print(g);
+    Serial.print(" B:");
+    Serial.print(b);
+    Serial.print(" -> Buffer[");
+    Serial.print(pos);
+    Serial.print("]=G:");
+    Serial.print(buffer[pos]);
+    Serial.print(" Buffer[");
+    Serial.print(pos+1);
+    Serial.print("]=R:");
+    Serial.print(buffer[pos+1]);
+    Serial.print(" Buffer[");
+    Serial.print(pos+2);
+    Serial.print("]=B:");
+    Serial.println(buffer[pos+2]);
+    lastDebug = now;
+  }
 }
 
 void WS2812B::setPixel(uint8_t index, uint32_t color) {
@@ -88,19 +112,6 @@ void WS2812B::clear() {
 }
 
 void WS2812B::show() {
-  static uint32_t lastDebug = 0;
-  uint32_t now = millis();
-  
-  if (now - lastDebug > 1000) {
-    Serial.print("WS2812B show - Buffer[0]: G=");
-    Serial.print(buffer[0]);
-    Serial.print(" R=");
-    Serial.print(buffer[1]);
-    Serial.print(" B=");
-    Serial.println(buffer[2]);
-    lastDebug = now;
-  }
-  
   portDISABLE_INTERRUPTS();
   
   uint32_t mask = 1UL << pin;
@@ -110,14 +121,14 @@ void WS2812B::show() {
     for (int8_t bit = 7; bit >= 0; bit--) {
       if (byte & (1 << bit)) {
         GPIO.out_w1ts = mask;
-        for (volatile uint8_t j = 0; j < 28; j++) __asm__ __volatile__("nop");
+        __asm__ __volatile__("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
         GPIO.out_w1tc = mask;
-        for (volatile uint8_t j = 0; j < 10; j++) __asm__ __volatile__("nop");
+        __asm__ __volatile__("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
       } else {
         GPIO.out_w1ts = mask;
-        for (volatile uint8_t j = 0; j < 10; j++) __asm__ __volatile__("nop");
+        __asm__ __volatile__("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
         GPIO.out_w1tc = mask;
-        for (volatile uint8_t j = 0; j < 28; j++) __asm__ __volatile__("nop");
+        __asm__ __volatile__("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
       }
     }
   }
