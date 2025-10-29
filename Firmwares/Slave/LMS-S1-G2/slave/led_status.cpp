@@ -2,7 +2,7 @@
 #include <Arduino.h>
 
 #define ANIMATION_UPDATE_MS 50
-#define LED_BRIGHTNESS 30
+#define LED_BRIGHTNESS 50
 
 LedStatus::LedStatus(WS2812B* led) : led(led), currentState(LED_STATE_INIT), lastState(LED_STATE_INIT), 
                                       lastUpdate(0), animationCounter(0), blinkState(false) {
@@ -16,8 +16,32 @@ void LedStatus::begin() {
   lastUpdate = millis();
 }
 
+const char* getStateName(LedState state) {
+  switch(state) {
+    case LED_STATE_INIT: return "INIT";
+    case LED_STATE_IO_ERROR: return "IO_ERROR";
+    case LED_STATE_COMM_ERROR: return "COMM_ERROR";
+    case LED_STATE_WAITING_PAIR: return "WAITING_PAIR";
+    case LED_STATE_PAIRED: return "PAIRED";
+    case LED_STATE_COMMAND_RECEIVED: return "COMMAND_RECEIVED";
+    case LED_STATE_UNPAIRED: return "UNPAIRED";
+    case LED_STATE_RESETTING: return "RESETTING";
+    case LED_STATE_POWER_LOW: return "POWER_LOW";
+    case LED_STATE_SHORT_CIRCUIT: return "SHORT_CIRCUIT";
+    case LED_STATE_OVERCURRENT: return "OVERCURRENT";
+    case LED_STATE_TEMP_OVERHEAT_POWER: return "TEMP_OVERHEAT_POWER";
+    case LED_STATE_TEMP_OVERHEAT_LED1: return "TEMP_OVERHEAT_LED1";
+    case LED_STATE_TEMP_OVERHEAT_LED2: return "TEMP_OVERHEAT_LED2";
+    default: return "UNKNOWN";
+  }
+}
+
 void LedStatus::setState(LedState state) {
   if (state != currentState) {
+    Serial.print("LED State change: ");
+    Serial.print(getStateName(currentState));
+    Serial.print(" -> ");
+    Serial.println(getStateName(state));
     lastState = currentState;
     currentState = state;
     animationCounter = 0;

@@ -24,17 +24,30 @@ bool WS2812B::begin() {
 
 void WS2812B::sendBit(bool bit) {
   uint32_t mask = 1UL << pin;
+  volatile uint32_t t0, t1, t2;
   
   if (bit) {
     GPIO.out_w1ts = mask;
-    __asm__ __volatile__ ("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+    t0 = 0; t1 = 0; t2 = 0;
+    for (volatile uint8_t i = 0; i < 28; i++) {
+      __asm__ __volatile__("nop");
+    }
     GPIO.out_w1tc = mask;
-    __asm__ __volatile__ ("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+    t0 = 0; t1 = 0; t2 = 0;
+    for (volatile uint8_t i = 0; i < 10; i++) {
+      __asm__ __volatile__("nop");
+    }
   } else {
     GPIO.out_w1ts = mask;
-    __asm__ __volatile__ ("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+    t0 = 0; t1 = 0; t2 = 0;
+    for (volatile uint8_t i = 0; i < 10; i++) {
+      __asm__ __volatile__("nop");
+    }
     GPIO.out_w1tc = mask;
-    __asm__ __volatile__ ("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+    t0 = 0; t1 = 0; t2 = 0;
+    for (volatile uint8_t i = 0; i < 28; i++) {
+      __asm__ __volatile__("nop");
+    }
   }
 }
 
@@ -75,11 +88,28 @@ void WS2812B::clear() {
 }
 
 void WS2812B::show() {
-  noInterrupts();
+  portDISABLE_INTERRUPTS();
+  
+  uint32_t mask = 1UL << pin;
+  
   for (uint8_t i = 0; i < numLeds * 3; i++) {
-    sendByte(buffer[i]);
+    uint8_t byte = buffer[i];
+    for (int8_t bit = 7; bit >= 0; bit--) {
+      if (byte & (1 << bit)) {
+        GPIO.out_w1ts = mask;
+        for (volatile uint8_t j = 0; j < 28; j++) __asm__ __volatile__("nop");
+        GPIO.out_w1tc = mask;
+        for (volatile uint8_t j = 0; j < 10; j++) __asm__ __volatile__("nop");
+      } else {
+        GPIO.out_w1ts = mask;
+        for (volatile uint8_t j = 0; j < 10; j++) __asm__ __volatile__("nop");
+        GPIO.out_w1tc = mask;
+        for (volatile uint8_t j = 0; j < 28; j++) __asm__ __volatile__("nop");
+      }
+    }
   }
-  interrupts();
-  delayMicroseconds(50);
+  
+  portENABLE_INTERRUPTS();
+  delayMicroseconds(80);
 }
 
