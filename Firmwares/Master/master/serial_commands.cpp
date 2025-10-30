@@ -137,23 +137,23 @@ void SerialCommands::handleCommand(const String& cmd) {
       char version[8] = {0};
       memcpy(version, ver.c_str(), ver.length());
       if (id < 0 || id >= MAX_SLAVES || !slaveManager.getSlaves()[id].linked) { Serial.println("ERROR: Invalid slave id"); return; }
+      g_fwPushActive = true;
       espnowHandler.sendFwBegin(slaveManager.getSlaves()[id].mac, sessionId, version, sizeBytes, crc);
       Serial.println("FWPUSH waiting for slave TCP connect...");
       extern WiFiServer fwServer;
       WiFiClient client = fwServer.available();
       uint32_t startWait = millis();
-      while (!client && millis() - startWait < 10000) { client = fwServer.available(); delay(10); }
-      if (!client) { Serial.println("ERROR: Slave TCP connect timeout"); return; }
+      while (!client && millis() - startWait < 20000) { client = fwServer.available(); delay(10); }
+      if (!client) { Serial.println("ERROR: Slave TCP connect timeout"); g_fwPushActive = false; return; }
       Serial.println("FWPUSH streaming...");
-      g_fwPushActive = true;
       uint32_t remaining = sizeBytes;
       uint8_t buf[1024];
       while (remaining > 0) {
         int toRead = remaining > sizeof(buf) ? sizeof(buf) : remaining;
         int n = Serial.readBytes((char*)buf, toRead);
-        if (n <= 0) { Serial.println("ERROR: Serial read timeout"); client.stop(); return; }
+        if (n <= 0) { Serial.println("ERROR: Serial read timeout"); client.stop(); g_fwPushActive = false; return; }
         int sent = client.write(buf, n);
-        if (sent != n) { Serial.println("ERROR: TCP write failed"); client.stop(); return; }
+        if (sent != n) { Serial.println("ERROR: TCP write failed"); client.stop(); g_fwPushActive = false; return; }
         remaining -= (uint32_t)n;
       }
       client.flush();
