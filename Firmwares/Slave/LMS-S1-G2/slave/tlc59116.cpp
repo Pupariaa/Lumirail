@@ -44,9 +44,9 @@ bool TLC59116::begin(uint8_t sdaPin, uint8_t sclPin) {
     return false;
   }
   
-  Serial.print("OK: TLC59116 at 0x");
-  Serial.print(deviceAddr, HEX);
-  Serial.println(" responding");
+  // Serial.print("OK: TLC59116 at 0x");
+  // Serial.print(deviceAddr, HEX);
+  // Serial.println(" responding");
   
   // Software reset (send to all call address 0x00)
   // Note: Error 4 (timeout) is normal for all-call address, ignore it
@@ -91,9 +91,9 @@ bool TLC59116::begin(uint8_t sdaPin, uint8_t sclPin) {
     Serial.println(deviceAddr, HEX);
   }
   
-  Serial.print("OK: TLC59116 at 0x");
-  Serial.print(deviceAddr, HEX);
-  Serial.println(" fully initialized");
+  // Serial.print("OK: TLC59116 at 0x");
+  // Serial.print(deviceAddr, HEX);
+  // Serial.println(" fully initialized");
   
   return true;
 }

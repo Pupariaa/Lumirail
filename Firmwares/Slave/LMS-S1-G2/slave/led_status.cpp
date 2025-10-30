@@ -38,10 +38,10 @@ const char* getStateName(LedState state) {
 
 void LedStatus::setState(LedState state) {
   if (state != currentState) {
-    Serial.print("LED State change: ");
-    Serial.print(getStateName(currentState));
-    Serial.print(" -> ");
-    Serial.println(getStateName(state));
+    // Serial.print("LED State change: ");
+    // Serial.print(getStateName(currentState));
+    // Serial.print(" -> ");
+    // Serial.println(getStateName(state));
     lastState = currentState;
     currentState = state;
     animationCounter = 0;
