@@ -25,11 +25,12 @@ void SlaveManager::init() {
 void SlaveManager::update() {
   checkSlaveTimeouts();
   
-  // Periodic scan every 5 seconds
   uint64_t now = millis();
-  if (now - lastScan >= 5000) {
-    scanSlaves();
-    lastScan = now;
+  if (!espnowHandler.isFwActive()) {
+    if (now - lastScan >= 5000) {
+      scanSlaves();
+      lastScan = now;
+    }
   }
 }
 
