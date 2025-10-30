@@ -4,6 +4,8 @@
 #include "protocol.h"
 #include "eeprom_config.h"
 #include <esp_now.h>
+#include "w25q.h"
+#include "fw_header.h"
 
 class EspNowHandler {
 public:
@@ -31,6 +33,9 @@ private:
   void sendAck(const uint8_t* mac, uint16_t sequence);
   void sendNack(const uint8_t* mac, uint16_t sequence);
   void checkTimeout();
+  void handleFwBegin(const uint8_t* mac, EspNowMessage* msg);
+  void handleFwChunk(const uint8_t* mac, EspNowMessage* msg);
+  void handleFwEnd(const uint8_t* mac, EspNowMessage* msg);
   
   void handleMasterDiscovery(const uint8_t* mac, EspNowMessage* msg);
   void handlePairRequest(const uint8_t* mac, EspNowMessage* msg);
@@ -42,6 +47,15 @@ private:
   static void onDataSent(const esp_now_send_info_t *info, esp_now_send_status_t status);
   
   static EspNowHandler* instance;
+
+  // Firmware session state
+  uint16_t fwSessionId;
+  uint32_t fwExpectedOffset;
+  uint32_t fwTotalSize;
+  uint32_t fwCrcExpected;
+  uint32_t fwCrcAccum;
+  char fwVersion[8];
+  bool fwActive;
 };
 
 extern EspNowHandler espnowHandler;
