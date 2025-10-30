@@ -1,8 +1,17 @@
 #include "serial_commands.h"
 #include "slave_manager.h"
 #include "espnow_handler.h"
+#include "crc32.h"
+#include <WiFi.h>
+
+extern WiFiServer fwServer;
+
+static uint32_t g_fw_offset = 0;
+static uint16_t g_fw_session = 1;
+static int g_fw_target = 0;
 
 SerialCommands serialCommands;
+static bool g_fwPushActive = false;
 
 SerialCommands::SerialCommands() {}
 
@@ -13,6 +22,7 @@ void SerialCommands::init() {
 }
 
 void SerialCommands::process() {
+  if (g_fwPushActive) return;
   if (!Serial.available()) return;
   
   String cmd = Serial.readStringUntil('\n');
@@ -54,9 +64,107 @@ void SerialCommands::handleCommand(const String& cmd) {
   } else if (cmd.startsWith("stats")) {
     slaveManager.printStats();
     
+  } else if (cmd.startsWith("fwbegin ")) {
+    int p1 = cmd.indexOf(' ', 8);
+    int p2 = cmd.indexOf(' ', p1 + 1);
+    int p3 = cmd.indexOf(' ', p2 + 1);
+    int p4 = cmd.indexOf(' ', p3 + 1);
+    if (p1 > 0 && p2 > 0 && p3 > 0) {
+      int id = cmd.substring(8, p1).toInt();
+      uint32_t sizeBytes = (uint32_t)cmd.substring(p1 + 1, p2).toInt();
+      String ver = (p4 > 0) ? cmd.substring(p2 + 1, p3) : cmd.substring(p2 + 1);
+      uint16_t sessionId = (uint16_t)cmd.substring(p3 + 1, (p4 > 0 ? p4 : cmd.length())).toInt();
+      uint32_t crc = 0;
+      if (p4 > 0) {
+        String crcStr = cmd.substring(p4 + 1);
+        if (crcStr.startsWith("0x") || crcStr.startsWith("0X")) crc = strtoul(crcStr.c_str(), NULL, 16);
+        else crc = (uint32_t)crcStr.toInt();
+      }
+      if (ver.length() > 8) ver = ver.substring(0, 8);
+      char version[8] = {0};
+      memcpy(version, ver.c_str(), ver.length());
+      if (id < 0 || id >= MAX_SLAVES || !slaveManager.getSlaves()[id].linked) { Serial.println("ERROR: Invalid slave id"); return; }
+      g_fw_offset = 0; g_fw_session = sessionId; g_fw_target = id;
+      espnowHandler.sendFwBegin(slaveManager.getSlaves()[id].mac, sessionId, version, sizeBytes, crc);
+      Serial.println("FWBEGIN sent");
+    }
+  } else if (cmd.startsWith("fwchunk ")) {
+    String hex = cmd.substring(8);
+    hex.trim();
+    static uint8_t buf[188];
+    int len = 0;
+    for (unsigned i = 0; i + 1 < hex.length() && len < 188; i += 2) {
+      char a = hex.charAt(i), b = hex.charAt(i + 1);
+      auto hv = [](char c)->int { if (c >= '0' && c <= '9') return c - '0'; if (c >= 'A' && c <= 'F') return c - 'A' + 10; if (c >= 'a' && c <= 'f') return c - 'a' + 10; return 0; };
+      buf[len++] = (uint8_t)((hv(a) << 4) | hv(b));
+    }
+    if (slaveManager.getSlaves()[g_fw_target].linked) {
+      uint32_t ccrc = crc32_finalize(crc32_update(crc32_init(), buf, len));
+      espnowHandler.sendFwChunk(slaveManager.getSlaves()[g_fw_target].mac, g_fw_session, g_fw_offset, buf, (uint16_t)len, ccrc);
+      g_fw_offset += (uint32_t)len;
+      Serial.print("FWCHUNK sent len="); Serial.println(len);
+    }
+  } else if (cmd.startsWith("fwend")) {
+    if (slaveManager.getSlaves()[g_fw_target].linked) {
+      espnowHandler.sendFwEnd(slaveManager.getSlaves()[g_fw_target].mac, g_fw_session);
+      Serial.println("FWEND sent");
+    }
+  } else if (cmd.startsWith("fwpush ")) {
+    if (g_fwPushActive) return;
+    int p1 = cmd.indexOf(' ', 7);
+    int p2 = cmd.indexOf(' ', p1 + 1);
+    int p3 = cmd.indexOf(' ', p2 + 1);
+    int p4 = cmd.indexOf(' ', p3 + 1);
+    int p5 = cmd.indexOf(' ', p4 + 1);
+    if (p1 > 0 && p2 > 0 && p3 > 0 && p4 > 0) {
+      int id = cmd.substring(7, p1).toInt();
+      uint32_t sizeBytes = (uint32_t)cmd.substring(p1 + 1, p2).toInt();
+      String ver = cmd.substring(p2 + 1, p3);
+      uint16_t sessionId = (uint16_t)cmd.substring(p3 + 1, p4).toInt();
+      uint32_t crc = 0;
+      if (p5 > 0) {
+        String crcStr = cmd.substring(p4 + 1);
+        if (crcStr.startsWith("0x") || crcStr.startsWith("0X")) crc = strtoul(crcStr.c_str(), NULL, 16);
+        else crc = (uint32_t)crcStr.toInt();
+      } else {
+        String crcStr = cmd.substring(p4 + 1);
+        if (crcStr.length()) {
+          if (crcStr.startsWith("0x") || crcStr.startsWith("0X")) crc = strtoul(crcStr.c_str(), NULL, 16);
+          else crc = (uint32_t)crcStr.toInt();
+        }
+      }
+      if (ver.length() > 8) ver = ver.substring(0, 8);
+      char version[8] = {0};
+      memcpy(version, ver.c_str(), ver.length());
+      if (id < 0 || id >= MAX_SLAVES || !slaveManager.getSlaves()[id].linked) { Serial.println("ERROR: Invalid slave id"); return; }
+      espnowHandler.sendFwBegin(slaveManager.getSlaves()[id].mac, sessionId, version, sizeBytes, crc);
+      Serial.println("FWPUSH waiting for slave TCP connect...");
+      extern WiFiServer fwServer;
+      WiFiClient client = fwServer.available();
+      uint32_t startWait = millis();
+      while (!client && millis() - startWait < 10000) { client = fwServer.available(); delay(10); }
+      if (!client) { Serial.println("ERROR: Slave TCP connect timeout"); return; }
+      Serial.println("FWPUSH streaming...");
+      g_fwPushActive = true;
+      uint32_t remaining = sizeBytes;
+      uint8_t buf[1024];
+      while (remaining > 0) {
+        int toRead = remaining > sizeof(buf) ? sizeof(buf) : remaining;
+        int n = Serial.readBytes((char*)buf, toRead);
+        if (n <= 0) { Serial.println("ERROR: Serial read timeout"); client.stop(); return; }
+        int sent = client.write(buf, n);
+        if (sent != n) { Serial.println("ERROR: TCP write failed"); client.stop(); return; }
+        remaining -= (uint32_t)n;
+      }
+      client.flush();
+      client.stop();
+      Serial.println("FWPUSH done, sending FW_END");
+      espnowHandler.sendFwEnd(slaveManager.getSlaves()[id].mac, sessionId);
+      g_fwPushActive = false;
+    }
   } else {
     Serial.println("ERROR: Unknown command");
-    Serial.println("Commands: list, paired, pair [id], unpair [id], ping [id], send [id] [msg], broadcast [msg], stats");
+    Serial.println("Commands: list, paired, pair [id], unpair [id], ping [id], send [id] [msg], broadcast [msg], stats, fwbegin [id] [size] [version] [session], fwchunk [hex], fwend");
   }
 }
 
