@@ -295,3 +295,67 @@ bool EepromConfig::isModelSet() {
   return false;
 }
 
+bool EepromConfig::setUpdatePending(uint8_t vMajor, uint8_t vMinor, uint8_t vPatch) {
+  if (!initialized) return false;
+  uint8_t page[8];
+  page[0] = 0xB7;
+  page[1] = 0xA5;
+  page[2] = 0x00;
+  page[3] = vMajor;
+  page[4] = vMinor;
+  page[5] = vPatch;
+  page[6] = page[0] ^ page[1] ^ page[2] ^ page[3] ^ page[4] ^ page[5];
+  page[7] = 0x00;
+  if (!eeprom->writePage(EEPROM_UPDATE_FLAG, page, 8)) return false;
+  delay(10);
+  uint8_t verify[8];
+  if (!eeprom->readBuffer(EEPROM_UPDATE_FLAG, verify, 8)) return false;
+  for (uint8_t i = 0; i < 8; i++) if (verify[i] != page[i]) return false;
+  return true;
+}
+
+bool EepromConfig::setUpdateApplying(uint8_t vMajor, uint8_t vMinor, uint8_t vPatch) {
+  if (!initialized) return false;
+  uint8_t page[8];
+  page[0] = 0xB7;
+  page[1] = 0x5A;
+  page[2] = 0x00;
+  page[3] = vMajor;
+  page[4] = vMinor;
+  page[5] = vPatch;
+  page[6] = page[0] ^ page[1] ^ page[2] ^ page[3] ^ page[4] ^ page[5];
+  page[7] = 0x00;
+  if (!eeprom->writePage(EEPROM_UPDATE_FLAG, page, 8)) return false;
+  delay(10);
+  uint8_t verify[8];
+  if (!eeprom->readBuffer(EEPROM_UPDATE_FLAG, verify, 8)) return false;
+  for (uint8_t i = 0; i < 8; i++) if (verify[i] != page[i]) return false;
+  return true;
+}
+
+bool EepromConfig::clearUpdateFlag() {
+  if (!initialized) return false;
+  uint8_t page[8] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+  if (!eeprom->writePage(EEPROM_UPDATE_FLAG, page, 8)) return false;
+  delay(10);
+  uint8_t verify[8];
+  if (!eeprom->readBuffer(EEPROM_UPDATE_FLAG, verify, 8)) return false;
+  for (uint8_t i = 0; i < 8; i++) if (verify[i] != page[i]) return false;
+  return true;
+}
+
+bool EepromConfig::readUpdateFlag(uint8_t &state, uint8_t &reason, uint8_t &vMajor, uint8_t &vMinor, uint8_t &vPatch) {
+  if (!initialized) return false;
+  uint8_t page[8];
+  if (!eeprom->readBuffer(EEPROM_UPDATE_FLAG, page, 8)) return false;
+  if (page[0] != 0xB7) return false;
+  uint8_t chk = page[0] ^ page[1] ^ page[2] ^ page[3] ^ page[4] ^ page[5];
+  if (chk != page[6]) return false;
+  state = page[1];
+  reason = page[2];
+  vMajor = page[3];
+  vMinor = page[4];
+  vPatch = page[5];
+  return true;
+}
+

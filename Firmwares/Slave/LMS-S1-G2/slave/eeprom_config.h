@@ -8,6 +8,7 @@
 #define EEPROM_SERIAL_START  0x00  // 8 bytes: Serial number (page 0)
 #define EEPROM_MODEL_START   0x08  // 8 bytes: Model name (page 1)
 #define EEPROM_MAC_START     0xF0  // 16 bytes: Authorized master MAC (6 bytes MAC + 10 bytes reserved for future use) (pages 30-31)
+#define EEPROM_UPDATE_FLAG   0x18  // 8 bytes: firmware update state (page 3)
 
 #define SERIAL_MAX_LEN  7  // Null-terminated string
 #define MODEL_MAX_LEN   7  // Null-terminated string
@@ -36,6 +37,12 @@ public:
   // Check if serial/model are set (not all 0xFF)
   bool isSerialSet();
   bool isModelSet();
+
+  // Firmware update flag management (8 bytes page)
+  bool setUpdatePending(uint8_t vMajor, uint8_t vMinor, uint8_t vPatch);
+  bool setUpdateApplying(uint8_t vMajor, uint8_t vMinor, uint8_t vPatch);
+  bool clearUpdateFlag();
+  bool readUpdateFlag(uint8_t &state, uint8_t &reason, uint8_t &vMajor, uint8_t &vMinor, uint8_t &vPatch);
 };
 
 #endif
