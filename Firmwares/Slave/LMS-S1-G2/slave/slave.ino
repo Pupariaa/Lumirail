@@ -6,6 +6,10 @@
 #include "ws2812b.h"
 #include "button.h"
 #include "led_status.h"
+#include "w25q.h"
+#include "fw_header.h"
+#include "crc32.h"
+#include <Update.h>
 #include "tlc59116.h"
 #include <esp_wifi.h>
 
@@ -24,15 +28,17 @@ LedStatus ledStatus(&statusLed);
 Button button(BUTTON_PIN, 1000);
 TLC59116 tlc1(TLC59116_ADDR_1);
 TLC59116 tlc2(TLC59116_ADDR_2);
+W25Q extFlash(25, 13, 35, 14);
 
 // Temporary: Set to true once to configure serial/model, then set back to false
 #define ENABLE_EEPROM_CONFIG false
+#define ENABLE_FLASH_WRITE_TEST false
 
 uint32_t lastTempCheck = 0;
 
 void scanI2C() {
-  Serial.println("\n=== I2C Bus Scan ===");
-  Serial.println("Scanning all I2C addresses (0x08 to 0x77)...");
+  // Serial.println("\n=== I2C Bus Scan ===");
+  // Serial.println("Scanning all I2C addresses (0x08 to 0x77)...");
   
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   Wire.setClock(100000);
@@ -61,44 +67,44 @@ void scanI2C() {
       else if (address == 0x6B) deviceName = "TLC59116 All-Call (reset)";
       else if (address == 0x00) deviceName = "I2C General Call (reset)";
       
-      Serial.print("  [0x");
-      if (address < 16) Serial.print("0");
-      Serial.print(address, HEX);
-      Serial.print("] ");
-      Serial.print(deviceName);
-      Serial.print(" (error code: ");
-      Serial.print(error);
-      Serial.println(")");
+      // Serial.print("  [0x");
+      // if (address < 16) Serial.print("0");
+      // Serial.print(address, HEX);
+      // Serial.print("] ");
+      // Serial.print(deviceName);
+      // Serial.print(" (error code: ");
+      // Serial.print(error);
+      // Serial.println(")");
     }
     
     // Small delay to allow bus to settle
     delay(1);
   }
   
-  Serial.println();
-  Serial.print("Total devices found: ");
-  Serial.println(foundCount);
+  // Serial.println();
+  // Serial.print("Total devices found: ");
+  // Serial.println(foundCount);
   
   if (foundCount == 0) {
     Serial.println("WARNING: No I2C devices detected! Check wiring.");
   } else {
-    Serial.print("Found addresses: ");
-    for (uint8_t i = 0; i < foundCount; i++) {
-      Serial.print("0x");
-      if (foundAddresses[i] < 16) Serial.print("0");
-      Serial.print(foundAddresses[i], HEX);
-      if (i < foundCount - 1) Serial.print(", ");
-    }
-    Serial.println();
+    // Serial.print("Found addresses: ");
+    // for (uint8_t i = 0; i < foundCount; i++) {
+    //   Serial.print("0x");
+    //   if (foundAddresses[i] < 16) Serial.print("0");
+    //   Serial.print(foundAddresses[i], HEX);
+    //   if (i < foundCount - 1) Serial.print(", ");
+    // }
+    // Serial.println();
   }
   
-  Serial.println("=== End I2C Scan ===\n");
+  // Serial.println("=== End I2C Scan ===\n");
 }
 
 bool checkComponents() {
   bool allOk = true;
   
-  Serial.println("Checking I2C components...");
+  // Serial.println("Checking I2C components...");
   
   // First, scan all I2C addresses for debug
   scanI2C();
@@ -109,7 +115,7 @@ bool checkComponents() {
     allOk = false;
     ledStatus.setState(LED_STATE_IO_ERROR);
   } else {
-    Serial.println("OK: AT24C02 EEPROM (0x50) connected");
+    // Serial.println("OK: AT24C02 EEPROM (0x50) connected");
   }
   
   if (!tempPower.begin(I2C_SDA_PIN, I2C_SCL_PIN)) {
@@ -117,7 +123,7 @@ bool checkComponents() {
     allOk = false;
     ledStatus.setState(LED_STATE_IO_ERROR);
   } else {
-    Serial.println("OK: LM75A Power (0x4C) connected");
+    // Serial.println("OK: LM75A Power (0x4C) connected");
   }
   
   if (!tempLed1.begin(I2C_SDA_PIN, I2C_SCL_PIN)) {
@@ -125,7 +131,7 @@ bool checkComponents() {
     allOk = false;
     ledStatus.setState(LED_STATE_IO_ERROR);
   } else {
-    Serial.println("OK: LM75A LED1 (0x48) connected");
+    // Serial.println("OK: LM75A LED1 (0x48) connected");
   }
   
   if (!tempLed2.begin(I2C_SDA_PIN, I2C_SCL_PIN)) {
@@ -133,7 +139,7 @@ bool checkComponents() {
     allOk = false;
     ledStatus.setState(LED_STATE_IO_ERROR);
   } else {
-    Serial.println("OK: LM75A LED2 (0x4E) connected");
+    // Serial.println("OK: LM75A LED2 (0x4E) connected");
   }
   
   // Check TLC59116IPWR controllers with retry
@@ -161,13 +167,13 @@ bool checkComponents() {
   }
   
   if (tlc1Found) {
-    Serial.println("OK: TLC59116IPWR #1 (0x60) connected");
+    // Serial.println("OK: TLC59116IPWR #1 (0x60) connected");
   } else {
     Serial.println("WARNING: TLC59116IPWR #1 (0x60) not found");
   }
   
   if (tlc2Found) {
-    Serial.println("OK: TLC59116IPWR #2 (0x68) connected");
+    // Serial.println("OK: TLC59116IPWR #2 (0x68) connected");
   } else {
     Serial.println("WARNING: TLC59116IPWR #2 (0x68) not found");
   }
@@ -176,7 +182,7 @@ bool checkComponents() {
 }
 
 void testTLC59116() {
-  Serial.println("\n=== TLC59116IPWR Test ===");
+  // Serial.println("\n=== TLC59116IPWR Test ===");
   
   // Initialize controllers
   Serial.println("Initializing TLC59116IPWR #1 (0x60)...");
@@ -187,7 +193,7 @@ void testTLC59116() {
   
   if (!tlc1Ok && !tlc2Ok) {
     Serial.println("ERROR: Both TLC59116IPWR controllers failed to initialize");
-    Serial.println("=== End TLC59116IPWR Test ===\n");
+    // Serial.println("=== End TLC59116IPWR Test ===\n");
     return;
   }
   
@@ -198,7 +204,7 @@ void testTLC59116() {
     Serial.println("WARNING: TLC59116IPWR #2 (0x68) failed - skipping test");
   }
   
-  Serial.println("Turning ON all LEDs...");
+  // Serial.println("Turning ON all LEDs...");
   if (tlc1Ok) {
     if (!tlc1.setAllPWM(0xFF)) {
       Serial.println("ERROR: Failed to turn ON LEDs for TLC59116IPWR #1 (0x60)");
@@ -211,7 +217,7 @@ void testTLC59116() {
   }
   delay(500);
   
-  Serial.println("Turning OFF all LEDs...");
+  // Serial.println("Turning OFF all LEDs...");
   if (tlc1Ok) {
     if (!tlc1.allOff()) {
       Serial.println("ERROR: Failed to turn OFF LEDs for TLC59116IPWR #1 (0x60)");
@@ -224,11 +230,11 @@ void testTLC59116() {
   }
   delay(500);
   
-  Serial.print("TLC59116IPWR test complete - #1: ");
-  Serial.print(tlc1Ok ? "OK" : "FAILED");
-  Serial.print(", #2: ");
-  Serial.println(tlc2Ok ? "OK" : "FAILED");
-  Serial.println("=== End TLC59116IPWR Test ===\n");
+  // Serial.print("TLC59116IPWR test complete - #1: ");
+  // Serial.print(tlc1Ok ? "OK" : "FAILED");
+  // Serial.print(", #2: ");
+  // Serial.println(tlc2Ok ? "OK" : "FAILED");
+  // Serial.println("=== End TLC59116IPWR Test ===\n");
 }
 
 void setup() {
@@ -236,14 +242,130 @@ void setup() {
   delay(1000);
   
   Serial.println("LumiRail Slave - Starting...");
+
+
+
+  // Serial.println("Initializing external SPI flash...");
+  if (extFlash.begin()) {
+    uint8_t m, t, c;
+    if (extFlash.readJedecId(m, t, c)) {
+      Serial.print("OK: W25Q JEDEC ID ");
+      Serial.print(m, HEX); Serial.print(" "); Serial.print(t, HEX); Serial.print(" "); Serial.println(c, HEX);
+      uint32_t sz = extFlash.sizeBytes();
+      Serial.print("Flash size bytes: "); Serial.println(sz);
+      uint8_t uid[8];
+      if (extFlash.readUniqueId(uid)) {
+        Serial.print("UID: ");
+        for (int i = 0; i < 8; i++) { Serial.printf("%02X", uid[i]); if (i < 7) Serial.print(":"); }
+        Serial.println();
+      }
+      uint8_t buf[16];
+      if (extFlash.readData(0, buf, sizeof(buf))) {
+        Serial.print("Read[0..15]: ");
+        for (int i = 0; i < 16; i++) { Serial.printf("%02X", buf[i]); if (i < 15) Serial.print(" "); }
+        Serial.println();
+      }
+      if (ENABLE_FLASH_WRITE_TEST) {
+        uint32_t szb = extFlash.sizeBytes();
+        if (szb >= 4096) {
+          uint32_t testAddr = (szb - 4096);
+          Serial.print("Erasing 4K sector at 0x"); Serial.println(testAddr, HEX);
+          if (extFlash.sectorErase4K(testAddr)) {
+            uint8_t wr[16];
+            for (int i = 0; i < 16; i++) wr[i] = (uint8_t)(0xA0 + i);
+            if (extFlash.pageProgram(testAddr, wr, sizeof(wr))) {
+              uint8_t rd[16];
+              if (extFlash.readData(testAddr, rd, sizeof(rd))) {
+                bool ok = true;
+                for (int i = 0; i < 16; i++) if (rd[i] != wr[i]) { ok = false; break; }
+                Serial.println(ok ? "Flash write test OK" : "Flash write test FAILED");
+              }
+            } else {
+              Serial.println("ERROR: Page program failed");
+            }
+          } else {
+            Serial.println("ERROR: Sector erase failed");
+          }
+        }
+      }
+    } else {
+      Serial.println("ERROR: Failed to read JEDEC ID");
+    }
+  } else {
+    Serial.println("ERROR: External SPI flash not detected");
+  }
+
+  if (eeprom.isPresent()) {
+    uint8_t state, reason, vMaj, vMin, vPat;
+    if (eepromConfig.readUpdateFlag(state, reason, vMaj, vMin, vPat) && state == 0xA5) {
+      Serial.println("Pending firmware update detected");
+      if (!extFlash.isPresent()) {
+        Serial.println("ERROR: External flash not present for update");
+      } else {
+        FwHeader hdr;
+        if (extFlash.readData(0, (uint8_t *)&hdr, sizeof(hdr))) {
+          if (memcmp(hdr.magic, "LRFW", 4) == 0) {
+            uint32_t calcHeader = fw_header_crc(hdr);
+            if (calcHeader == hdr.headerCrc32) {
+              uint32_t crc = crc32_init();
+              const uint32_t base = 0x40;
+              uint32_t remaining = hdr.sizeBytes;
+              uint8_t buf[512];
+              uint32_t ptr = 0;
+              while (remaining > 0) {
+                size_t take = remaining > sizeof(buf) ? sizeof(buf) : remaining;
+                if (!extFlash.readData(base + ptr, buf, take)) break;
+                crc = crc32_update(crc, buf, take);
+                ptr += take;
+                remaining -= take;
+              }
+              crc = crc32_finalize(crc);
+              if (crc == hdr.crc32) {
+                Serial.print("Applying OTA size: "); Serial.println(hdr.sizeBytes);
+                if (eepromConfig.setUpdateApplying(vMaj, vMin, vPat)) {
+                  if (Update.begin(hdr.sizeBytes)) {
+                    remaining = hdr.sizeBytes;
+                    ptr = 0;
+                    bool ok = true;
+                    while (remaining > 0) {
+                      size_t take = remaining > sizeof(buf) ? sizeof(buf) : remaining;
+                      if (!extFlash.readData(base + ptr, buf, take)) { ok = false; break; }
+                      size_t w = Update.write(buf, take);
+                      if (w != take) { ok = false; break; }
+                      ptr += take;
+                      remaining -= take;
+                    }
+                    if (ok && Update.end(true)) {
+                      Serial.println("OTA apply OK");
+                      eepromConfig.clearUpdateFlag();
+                      delay(100);
+                      ESP.restart();
+                    } else {
+                      Serial.println("ERROR: OTA apply failed");
+                    }
+                  } else {
+                    Serial.println("ERROR: Update.begin failed");
+                  }
+                }
+              } else {
+                Serial.println("ERROR: Firmware CRC mismatch");
+              }
+            } else {
+              Serial.println("ERROR: Header CRC mismatch");
+            }
+          }
+        }
+      }
+    }
+  }
   
   statusLed.begin();
   ledStatus.begin();
   ledStatus.setState(LED_STATE_INIT);
-  Serial.println("OK: WS2812B LED initialized");
+  // Serial.println("OK: WS2812B LED initialized");
   
   button.begin();
-  Serial.println("OK: Button initialized");
+  // Serial.println("OK: Button initialized");
   
   if (!checkComponents()) {
     Serial.println("WARNING: Some components are missing. Continuing anyway...");
@@ -251,7 +373,7 @@ void setup() {
       ledStatus.setState(LED_STATE_WAITING_PAIR);
     }
   } else {
-    Serial.println("All I2C components detected successfully");
+    // Serial.println("All I2C components detected successfully");
     ledStatus.setState(LED_STATE_WAITING_PAIR);
   }
   
@@ -399,6 +521,7 @@ void setup() {
   Serial.println();
   
   Serial.println("Slave Ready");
+  Serial.println("V0.0.1");
 }
 
 void checkTemperatures() {
@@ -499,7 +622,7 @@ void loop() {
   }
   
   if (button.isPressed()) {
-    Serial.println("Button pressed");
+    // Serial.println("Button pressed");
   }
   
   if (button.isHeld()) {
@@ -518,7 +641,7 @@ void loop() {
   }
   
   if (button.isReleased()) {
-    Serial.println("Button released");
+    // Serial.println("Button released");
   }
   
   espnowHandler.update();
