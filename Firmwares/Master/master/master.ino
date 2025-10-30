@@ -31,6 +31,7 @@ void setup() {
   }
   Serial.println();
   
+  Serial.print("AP IP: "); Serial.println(apIP);
   // AP already configured above; ensure message and help printed
   Serial.println("Master Ready");
   Serial.println("Commands: list, paired, pair [id], unpair [id], ping [id], send [id] [msg], broadcast [msg], stats, fwpush [id] [size] [ver] [sess] [crc]");

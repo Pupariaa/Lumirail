@@ -283,15 +283,26 @@ void EspNowHandler::handleFwBegin(const uint8_t* mac, EspNowMessage* msg) {
   fwActive = true;
   Serial.println("FW_BEGIN OK");
 
+  Serial.print("Connecting to AP at "); Serial.println(masterIP);
   if (WiFi.status() != WL_CONNECTED) {
     WiFi.disconnect(true);
     WiFi.mode(WIFI_STA);
+    WiFi.setSleep(false);
     WiFi.begin("LumiRail");
     uint32_t t0 = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - t0 < 10000) { delay(25); }
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.print("WiFi connect failed, status="); Serial.println(WiFi.status());
+      sendNack(mac, msg->sequence);
+      return;
+    }
   }
+  Serial.print("STA IP: "); Serial.println(WiFi.localIP());
   WiFiClient client;
-  if (!client.connect(masterIP, 5001)) {
+  bool ok = client.connect(masterIP, 5001);
+  if (!ok) { delay(200); ok = client.connect(masterIP, 5001); }
+  if (!ok) { delay(500); ok = client.connect(masterIP, 5001); }
+  if (!ok) {
     Serial.println("ERROR: TCP connect failed");
     sendNack(mac, msg->sequence);
     return;

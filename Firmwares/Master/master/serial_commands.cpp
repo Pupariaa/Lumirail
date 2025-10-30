@@ -139,11 +139,12 @@ void SerialCommands::handleCommand(const String& cmd) {
       if (id < 0 || id >= MAX_SLAVES || !slaveManager.getSlaves()[id].linked) { Serial.println("ERROR: Invalid slave id"); return; }
       g_fwPushActive = true;
       espnowHandler.sendFwBegin(slaveManager.getSlaves()[id].mac, sessionId, version, sizeBytes, crc);
-      Serial.println("FWPUSH waiting for slave TCP connect...");
+      extern IPAddress apIP;
+      Serial.print("FWPUSH waiting for slave TCP connect at "); Serial.println(apIP);
       extern WiFiServer fwServer;
       WiFiClient client = fwServer.available();
       uint32_t startWait = millis();
-      while (!client && millis() - startWait < 20000) { client = fwServer.available(); delay(10); }
+      while (!client && millis() - startWait < 30000) { client = fwServer.available(); delay(10); }
       if (!client) { Serial.println("ERROR: Slave TCP connect timeout"); g_fwPushActive = false; return; }
       Serial.println("FWPUSH streaming...");
       uint32_t remaining = sizeBytes;
