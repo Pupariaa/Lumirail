@@ -25,7 +25,12 @@ enum MessageType {
   MSG_NACK = 0x07,
   MSG_PAIR_REQUEST = 0x08,
   MSG_PAIR_RESPONSE = 0x09,
-  MSG_UNPAIR = 0x0A
+  MSG_UNPAIR = 0x0A,
+  MSG_FW_BEGIN = 0x20,
+  MSG_FW_CHUNK = 0x21,
+  MSG_FW_END = 0x22,
+  MSG_FW_ACK = 0x23,
+  MSG_FW_ERROR = 0x24
 };
 
 struct EspNowMessage {
