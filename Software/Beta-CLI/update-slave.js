@@ -44,27 +44,20 @@ async function main() {
     const totalCrcHex = '0x' + totalCrc.toString(16).toUpperCase().padStart(8, '0');
     await writeLine(`fwpush ${slaveId} ${fw.length} ${version} ${sessionId} ${totalCrcHex}`);
 
-    function waitAckOffset(expected) {
-        return new Promise((resolve, reject) => {
-            const t = setTimeout(() => {
+    await new Promise((resolve, reject) => {
+        const t = setTimeout(() => {
+            parser.removeListener('data', onData);
+            reject(new Error('Timeout waiting for FWPUSH READY'));
+        }, 35000);
+        function onData(line) {
+            if (line.includes('FWPUSH READY')) {
+                clearTimeout(t);
                 parser.removeListener('data', onData);
-                reject(new Error('Timeout waiting for FW_ACK'));
-            }, 10000);
-            function onData(line) {
-                const m = line.match(/FW_ACK session=(\d+)\s*nextOffset=(\d+)/);
-                if (m) {
-                    const sess = parseInt(m[1], 10);
-                    const off = parseInt(m[2], 10);
-                    if (sess === sessionId && off === expected) {
-                        clearTimeout(t);
-                        parser.removeListener('data', onData);
-                        resolve();
-                    }
-                }
+                resolve();
             }
-            parser.on('data', onData);
-        });
-    }
+        }
+        parser.on('data', onData);
+    });
 
     await new Promise((resolve, reject) => {
         let offset = 0;

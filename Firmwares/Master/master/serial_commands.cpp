@@ -138,6 +138,7 @@ void SerialCommands::handleCommand(const String& cmd) {
       memcpy(version, ver.c_str(), ver.length());
       if (id < 0 || id >= MAX_SLAVES || !slaveManager.getSlaves()[id].linked) { Serial.println("ERROR: Invalid slave id"); return; }
       g_fwPushActive = true;
+      Serial.println("FWPUSH active, sending FW_BEGIN...");
       espnowHandler.sendFwBegin(slaveManager.getSlaves()[id].mac, sessionId, version, sizeBytes, crc);
       extern IPAddress apIP;
       Serial.print("FWPUSH waiting for slave TCP connect at "); Serial.println(apIP);
@@ -146,7 +147,7 @@ void SerialCommands::handleCommand(const String& cmd) {
       uint32_t startWait = millis();
       while (!client && millis() - startWait < 30000) { client = fwServer.available(); delay(10); }
       if (!client) { Serial.println("ERROR: Slave TCP connect timeout"); g_fwPushActive = false; return; }
-      Serial.println("FWPUSH streaming...");
+      Serial.println("FWPUSH READY");
       uint32_t remaining = sizeBytes;
       uint8_t buf[1024];
       while (remaining > 0) {
