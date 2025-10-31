@@ -18,17 +18,32 @@ async function main() {
     const sessionId = parseInt(sessionIdStr, 10);
     const fw = fs.readFileSync(fwPath);
 
-    const port = new SerialPort({ path: portPath, baudRate: 921600, autoOpen: true });
-    await new Promise(resolve => port.once('open', resolve));
+    console.log(`Opening serial port ${portPath} at 115200 baud...`);
+    const port = new SerialPort({ path: portPath, baudRate: 115200, autoOpen: true });
+    await new Promise(resolve => {
+        port.once('open', () => {
+            console.log(`Serial port ${portPath} opened successfully`);
+            resolve();
+        });
+    });
     const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
 
     parser.on('data', line => {
-        process.stdout.write(line.trim() + '\n');
+        const trimmed = line.trim();
+        process.stdout.write(trimmed + '\n');
     });
 
     function writeLine(line) {
         return new Promise((resolve, reject) => {
-            port.write(line + '\n', err => err ? reject(err) : resolve());
+            port.write(line + '\n', err => {
+                if (err) {
+                    console.error(`Write error: ${err}`);
+                    reject(err);
+                } else {
+                    console.log(`Command sent: ${line}`);
+                    resolve();
+                }
+            });
         });
     }
 
@@ -42,17 +57,22 @@ async function main() {
     }
     const totalCrc = crc32(fw) >>> 0;
     const totalCrcHex = '0x' + totalCrc.toString(16).toUpperCase().padStart(8, '0');
-    await writeLine(`fwpush ${slaveId} ${fw.length} ${version} ${sessionId} ${totalCrcHex}`);
+    const fwpushCmd = `fwpush ${slaveId} ${fw.length} ${version} ${sessionId} ${totalCrcHex}`;
+    console.log(`Sending command: ${fwpushCmd}`);
+    await writeLine(fwpushCmd);
 
+    console.log('Waiting for "FWPUSH READY" from Master...');
     await new Promise((resolve, reject) => {
         const t = setTimeout(() => {
             parser.removeListener('data', onData);
             reject(new Error('Timeout waiting for FWPUSH READY'));
         }, 35000);
         function onData(line) {
+            console.log(`Waiting for FWPUSH READY, received: ${line}`);
             if (line.includes('FWPUSH READY')) {
                 clearTimeout(t);
                 parser.removeListener('data', onData);
+                console.log('Received FWPUSH READY, starting binary transfer...');
                 resolve();
             }
         }
@@ -76,7 +96,7 @@ async function main() {
         pump();
     });
     console.log('Binary streamed. Waiting for apply...');
-    
+
     await new Promise((resolve, reject) => {
         const t = setTimeout(() => {
             parser.removeListener('data', onData);
@@ -91,7 +111,7 @@ async function main() {
         }
         parser.on('data', onData);
     });
-    
+
     console.log('Update completed');
     setTimeout(() => process.exit(0), 1000);
 }

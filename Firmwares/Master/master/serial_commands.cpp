@@ -34,6 +34,8 @@ void SerialCommands::handleCommand(const String& cmd) {
   if (g_fwPushActive) return;
   if (cmd.length() == 0) return;
   
+  Serial.printf("DEBUG: Received command: [%s]\n", cmd.c_str());
+  
   if (cmd.startsWith("list")) {
     slaveManager.printAllSlaves();
     
