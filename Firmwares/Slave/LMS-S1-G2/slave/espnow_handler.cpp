@@ -285,17 +285,24 @@ void EspNowHandler::handleFwBegin(const uint8_t* mac, EspNowMessage* msg) {
 
   Serial.print("Connecting to AP at "); Serial.println(masterIP);
   if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi not connected, starting STA...");
     WiFi.disconnect(true);
     WiFi.mode(WIFI_STA);
     WiFi.setSleep(false);
     WiFi.begin("LumiRail");
     uint32_t t0 = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 10000) { delay(25); }
+    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 10000) {
+      delay(25);
+      if ((millis() - t0) % 1000 < 50) {
+        Serial.print("WiFi status: "); Serial.println(WiFi.status());
+      }
+    }
     if (WiFi.status() != WL_CONNECTED) {
       Serial.print("WiFi connect failed, status="); Serial.println(WiFi.status());
       sendNack(mac, msg->sequence);
       return;
     }
+    Serial.println("WiFi connected!");
   }
   Serial.print("STA IP: "); Serial.println(WiFi.localIP());
   WiFiClient client;
