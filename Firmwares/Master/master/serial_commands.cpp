@@ -154,7 +154,8 @@ void SerialCommands::handleCommand(const String& cmd) {
       Serial.println("FWPUSH active, sending FW_BEGIN...");
       Serial.println("Other slaves will be ignored during update");
       espnowHandler.sendFwBegin(slaveManager.getSlaves()[id].mac, sessionId, version, sizeBytes, crc);
-      delay(300);
+      Serial.println("Waiting for Slave to process FW_BEGIN...");
+      delay(4000); // Attendre que le Slave traite FW_BEGIN (effacement flash, header, etc.)
       Serial.println("FWPUSH READY - waiting for chunks");
       
       // Vider le buffer série avant de lire le binaire
