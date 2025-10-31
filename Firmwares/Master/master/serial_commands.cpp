@@ -140,6 +140,7 @@ void SerialCommands::handleCommand(const String& cmd) {
       g_fwPushActive = true;
       Serial.println("FWPUSH active, sending FW_BEGIN...");
       espnowHandler.sendFwBegin(slaveManager.getSlaves()[id].mac, sessionId, version, sizeBytes, crc);
+      delay(1000);
       extern IPAddress apIP;
       Serial.print("FWPUSH waiting for slave TCP connect at "); Serial.println(apIP);
       extern WiFiServer fwServer;

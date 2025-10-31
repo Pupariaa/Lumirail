@@ -39,7 +39,6 @@ void EspNowHandler::init(EepromConfig* config) {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
-  WiFi.begin("LumiRail");
   
   if (esp_now_init() != ESP_OK) {
     Serial.println("ERROR: Failed to initialize ESP-NOW");
@@ -284,26 +283,46 @@ void EspNowHandler::handleFwBegin(const uint8_t* mac, EspNowMessage* msg) {
 
   Serial.print("Connecting TCP to "); Serial.println(masterIP);
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.print("WiFi not connected yet, status="); Serial.println(WiFi.status());
+    Serial.println("Connecting to LumiRail AP...");
+    WiFi.begin("LumiRail");
     uint32_t t0 = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 5000) { delay(100); }
+    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 10000) {
+      delay(100);
+      if ((millis() - t0) % 1000 < 100) {
+        Serial.print("WiFi status: "); Serial.println(WiFi.status());
+      }
+    }
     if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("ERROR: WiFi STA not connected to LumiRail AP");
+      Serial.print("ERROR: WiFi STA not connected, status="); Serial.println(WiFi.status());
       sendNack(mac, msg->sequence);
       return;
     }
   }
   Serial.print("STA IP: "); Serial.println(WiFi.localIP());
+  Serial.print("Gateway: "); Serial.println(WiFi.gatewayIP());
+  Serial.print("Subnet: "); Serial.println(WiFi.subnetMask());
   WiFiClient client;
-  bool ok = client.connect(masterIP, 5001, 5000);
-  if (!ok) { delay(200); ok = client.connect(masterIP, 5001, 5000); }
-  if (!ok) { delay(500); ok = client.connect(masterIP, 5001, 5000); }
+  client.setTimeout(5000);
+  Serial.print("Attempting TCP connect to "); Serial.print(masterIP); Serial.println(":5001");
+  bool ok = client.connect(masterIP, 5001);
   if (!ok) {
-    Serial.println("ERROR: TCP connect failed");
+    Serial.print("TCP connect failed, error code: "); Serial.println(client.getWriteError());
+    delay(500);
+    Serial.println("Retry 1...");
+    ok = client.connect(masterIP, 5001);
+  }
+  if (!ok) {
+    Serial.print("TCP connect failed retry 1, error code: "); Serial.println(client.getWriteError());
+    delay(1000);
+    Serial.println("Retry 2...");
+    ok = client.connect(masterIP, 5001);
+  }
+  if (!ok) {
+    Serial.print("ERROR: TCP connect failed after retries, error code: "); Serial.println(client.getWriteError());
     sendNack(mac, msg->sequence);
     return;
   }
-  Serial.println("TCP connected");
+  Serial.println("TCP connected successfully");
   uint8_t buf[1024];
   uint32_t remaining = fwTotalSize;
   while (remaining > 0) {
