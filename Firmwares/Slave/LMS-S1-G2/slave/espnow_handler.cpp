@@ -37,18 +37,17 @@ void EspNowHandler::init(EepromConfig* config) {
   eepromConfig = config;
   
   WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
+  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
+  WiFi.begin("LumiRail");
   
   if (esp_now_init() != ESP_OK) {
     Serial.println("ERROR: Failed to initialize ESP-NOW");
     return;
   }
   
-  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
-  
   esp_now_register_recv_cb(onDataReceive);
   esp_now_register_send_cb(onDataSent);
-  
-  WiFi.setSleep(false);
   
   lastStatusSent = millis();
   lastPairRequest = 0;
@@ -283,45 +282,28 @@ void EspNowHandler::handleFwBegin(const uint8_t* mac, EspNowMessage* msg) {
   fwActive = true;
   Serial.println("FW_BEGIN OK");
 
-  Serial.print("Connecting to AP at "); Serial.println(masterIP);
+  Serial.print("Connecting TCP to "); Serial.println(masterIP);
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi not connected, starting STA...");
-    WiFi.disconnect(true);
-    delay(100);
-    WiFi.mode(WIFI_STA);
-    delay(100);
-    WiFi.setSleep(false);
-    Serial.println("Calling WiFi.begin...");
-    WiFi.begin("LumiRail");
-    Serial.println("WiFi.begin returned");
+    Serial.print("WiFi not connected yet, status="); Serial.println(WiFi.status());
     uint32_t t0 = millis();
-    uint32_t lastLog = 0;
-    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 10000) {
-      delay(25);
-      uint32_t elapsed = millis() - t0;
-      if (elapsed - lastLog >= 500) {
-        Serial.print("WiFi status: "); Serial.print(WiFi.status());
-        Serial.print(" elapsed: "); Serial.println(elapsed);
-        lastLog = elapsed;
-      }
-    }
+    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 5000) { delay(100); }
     if (WiFi.status() != WL_CONNECTED) {
-      Serial.print("WiFi connect failed, status="); Serial.println(WiFi.status());
+      Serial.println("ERROR: WiFi STA not connected to LumiRail AP");
       sendNack(mac, msg->sequence);
       return;
     }
-    Serial.println("WiFi connected!");
   }
   Serial.print("STA IP: "); Serial.println(WiFi.localIP());
   WiFiClient client;
-  bool ok = client.connect(masterIP, 5001);
-  if (!ok) { delay(200); ok = client.connect(masterIP, 5001); }
-  if (!ok) { delay(500); ok = client.connect(masterIP, 5001); }
+  bool ok = client.connect(masterIP, 5001, 5000);
+  if (!ok) { delay(200); ok = client.connect(masterIP, 5001, 5000); }
+  if (!ok) { delay(500); ok = client.connect(masterIP, 5001, 5000); }
   if (!ok) {
     Serial.println("ERROR: TCP connect failed");
     sendNack(mac, msg->sequence);
     return;
   }
+  Serial.println("TCP connected");
   uint8_t buf[1024];
   uint32_t remaining = fwTotalSize;
   while (remaining > 0) {
