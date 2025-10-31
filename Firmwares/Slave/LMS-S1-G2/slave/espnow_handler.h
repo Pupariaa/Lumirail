@@ -56,6 +56,7 @@ private:
   uint32_t fwCrcAccum;
   char fwVersion[8];
   bool fwActive;
+  uint64_t lastResendAckTime;
 };
 
 extern EspNowHandler espnowHandler;

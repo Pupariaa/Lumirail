@@ -22,6 +22,9 @@ public:
   void setFwActive(bool v) { fwActive = v; }
   void setFwTargetMac(const uint8_t* mac) { if (mac) memcpy(fwTargetMac, mac, 6); else memset(fwTargetMac, 0, 6); }
   const uint8_t* getFwTargetMac() const { return fwTargetMac; }
+  uint32_t getLastFwAckOffset() const { return lastFwAckOffset; }
+  void setLastFwAckOffset(uint32_t offset) { lastFwAckOffset = offset; }
+  bool waitForFwAck(uint32_t expectedOffset, uint32_t timeoutMs = 5000);
   
   uint16_t getSequenceCounter() { return sequenceCounter; }
   
@@ -35,6 +38,7 @@ private:
   static void onDataReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len);
   bool fwActive;
   uint8_t fwTargetMac[6];
+  uint32_t lastFwAckOffset;
 };
 
 extern EspNowHandler espnowHandler;

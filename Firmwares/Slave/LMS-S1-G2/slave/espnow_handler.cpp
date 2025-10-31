@@ -25,7 +25,8 @@ EspNowHandler::EspNowHandler()
     fwTotalSize(0),
     fwCrcExpected(0),
     fwCrcAccum(0),
-    fwActive(false) {
+    fwActive(false),
+    lastResendAckTime(0) {
   instance = this;
 }
 
@@ -309,6 +310,13 @@ void EspNowHandler::handleFwChunk(const uint8_t* mac, EspNowMessage* msg) {
   uint32_t chunkCrc = (uint32_t)p[8 + dataLen] | ((uint32_t)p[9 + dataLen] << 8) | ((uint32_t)p[10 + dataLen] << 16) | ((uint32_t)p[11 + dataLen] << 24);
 
   if (offset != fwExpectedOffset) {
+    // Limiter la fréquence des ACK "resend" pour éviter de saturer la queue
+    uint64_t now = millis();
+    if (now - lastResendAckTime < 200) {
+      return; // Ignorer si on a déjà envoyé un ACK "resend" récemment
+    }
+    lastResendAckTime = now;
+    
     EspNowMessage ack;
     ack.version = 1;
     ack.type = MSG_FW_ACK;
@@ -322,8 +330,10 @@ void EspNowHandler::handleFwChunk(const uint8_t* mac, EspNowMessage* msg) {
     ack.payload[5] = (fwExpectedOffset >> 24) & 0xFF;
     ack.checksum = calculateChecksum(ack);
     esp_now_peer_info_t peerInfo;
+    memset(&peerInfo, 0, sizeof(peerInfo));
     memcpy(peerInfo.peer_addr, mac, 6);
-    peerInfo.channel = 0;
+    peerInfo.channel = 1;
+    peerInfo.ifidx = WIFI_IF_STA;
     peerInfo.encrypt = false;
     esp_err_t addRes = esp_now_add_peer(&peerInfo);
     if (addRes != ESP_OK && addRes != ESP_ERR_ESPNOW_EXIST) {

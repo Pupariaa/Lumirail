@@ -143,6 +143,7 @@ void SerialCommands::handleCommand(const String& cmd) {
       g_fwPushActive = true;
       espnowHandler.setFwTargetMac(slaveManager.getSlaves()[id].mac);
       espnowHandler.setFwActive(true);
+      espnowHandler.setLastFwAckOffset(0);
       Serial.println("FWPUSH active, sending FW_BEGIN...");
       Serial.println("Other slaves will be ignored during update");
       espnowHandler.sendFwBegin(slaveManager.getSlaves()[id].mac, sessionId, version, sizeBytes, crc);
@@ -196,10 +197,19 @@ void SerialCommands::handleCommand(const String& cmd) {
           return;
         }
         offset += n;
+        
+        // Attendre l'ACK avant d'envoyer le chunk suivant
+        if (!espnowHandler.waitForFwAck(offset, 2000)) {
+          Serial.printf("ERROR: Timeout waiting for FW_ACK at offset %u\n", offset);
+          espnowHandler.setFwActive(false);
+          espnowHandler.setFwTargetMac(nullptr);
+          g_fwPushActive = false;
+          return;
+        }
+        
         if (offset % 10000 < n || offset == sizeBytes) {
           Serial.printf("Progress: %u/%u bytes (%.1f%%)\n", offset, sizeBytes, (float)offset * 100.0 / sizeBytes);
         }
-        delay(10);
       }
       Serial.setTimeout(1000);
       Serial.println("FWPUSH done, sending FW_END");

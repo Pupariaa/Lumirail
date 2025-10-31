@@ -5,7 +5,7 @@
 
 EspNowHandler espnowHandler;
 
-EspNowHandler::EspNowHandler() : sequenceCounter(0), lastBroadcast(0), broadcastPeerAdded(false), fwActive(false) {
+EspNowHandler::EspNowHandler() : sequenceCounter(0), lastBroadcast(0), broadcastPeerAdded(false), fwActive(false), lastFwAckOffset(0) {
   memset(fwTargetMac, 0, 6);
 }
 
@@ -311,6 +311,17 @@ bool EspNowHandler::sendFwEnd(const uint8_t* mac, uint16_t sessionId) {
   return (res == ESP_OK || res == ESP_ERR_ESPNOW_IF);
 }
 
+bool EspNowHandler::waitForFwAck(uint32_t expectedOffset, uint32_t timeoutMs) {
+  uint32_t start = millis();
+  while (millis() - start < timeoutMs) {
+    if (lastFwAckOffset >= expectedOffset) {
+      return true;
+    }
+    delay(10);
+  }
+  return false;
+}
+
 void EspNowHandler::onDataSent(const esp_now_send_info_t *info, esp_now_send_status_t status) {
   if (status == ESP_NOW_SEND_SUCCESS) {
     slaveManager.getStats()->messagesSent++;
@@ -359,6 +370,9 @@ void EspNowHandler::onDataReceive(const esp_now_recv_info_t *info, const uint8_t
         uint16_t sid = (uint16_t)(msg->payload[0] | (msg->payload[1] << 8));
         uint32_t off = (uint32_t)msg->payload[2] | ((uint32_t)msg->payload[3] << 8) | ((uint32_t)msg->payload[4] << 16) | ((uint32_t)msg->payload[5] << 24);
         Serial.printf("FW_ACK session=%u nextOffset=%u\n", sid, off);
+        if (espnowHandler.fwActive && memcmp(mac_addr, espnowHandler.getFwTargetMac(), 6) == 0) {
+          espnowHandler.setLastFwAckOffset(off);
+        }
       }
       break;
     case MSG_FW_ERROR:
