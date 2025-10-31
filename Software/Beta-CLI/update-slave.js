@@ -18,7 +18,7 @@ async function main() {
     const sessionId = parseInt(sessionIdStr, 10);
     const fw = fs.readFileSync(fwPath);
 
-    const port = new SerialPort({ path: portPath, baudRate: 115200, autoOpen: true });
+    const port = new SerialPort({ path: portPath, baudRate: 921600, autoOpen: true });
     await new Promise(resolve => port.once('open', resolve));
     const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
 
@@ -69,12 +69,31 @@ async function main() {
                 offset += slice.length;
                 if (!ok) { port.once('drain', pump); return; }
             }
-            resolve();
+            port.drain(() => {
+                resolve();
+            });
         }
         pump();
     });
     console.log('Binary streamed. Waiting for apply...');
-    setTimeout(() => process.exit(0), 500);
+    
+    await new Promise((resolve, reject) => {
+        const t = setTimeout(() => {
+            parser.removeListener('data', onData);
+            reject(new Error('Timeout waiting for FWPUSH completion'));
+        }, 120000);
+        function onData(line) {
+            if (line.includes('FWPUSH done') || line.includes('Other slaves resumed')) {
+                clearTimeout(t);
+                parser.removeListener('data', onData);
+                resolve();
+            }
+        }
+        parser.on('data', onData);
+    });
+    
+    console.log('Update completed');
+    setTimeout(() => process.exit(0), 1000);
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

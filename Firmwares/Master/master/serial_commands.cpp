@@ -167,12 +167,13 @@ void SerialCommands::handleCommand(const String& cmd) {
       uint32_t offset = 0;
       uint8_t buf[188];
       const uint32_t CHUNK_SIZE = 188 - 12;
-      Serial.setTimeout(1000);
+      Serial.setTimeout(5000);
       while (offset < sizeBytes) {
         uint32_t toRead = (sizeBytes - offset > CHUNK_SIZE) ? CHUNK_SIZE : (sizeBytes - offset);
+        uint32_t availableBefore = Serial.available();
         int n = Serial.readBytes((char*)buf, toRead);
         if (n <= 0) { 
-          Serial.println("ERROR: Serial read timeout"); 
+          Serial.printf("ERROR: Serial read timeout at offset %u (available before: %u)\n", offset, availableBefore); 
           espnowHandler.removeFwTargetPeer();
           espnowHandler.setFwActive(false);
           espnowHandler.setFwTargetMac(nullptr);
@@ -180,7 +181,7 @@ void SerialCommands::handleCommand(const String& cmd) {
           return; 
         }
         if ((uint32_t)n != toRead) { 
-          Serial.println("ERROR: Serial read incomplete"); 
+          Serial.printf("ERROR: Serial read incomplete at offset %u: got %d expected %u (available before: %u)\n", offset, n, toRead, availableBefore); 
           espnowHandler.removeFwTargetPeer();
           espnowHandler.setFwActive(false);
           espnowHandler.setFwTargetMac(nullptr);
