@@ -31,6 +31,9 @@ void SerialCommands::process() {
 }
 
 void SerialCommands::handleCommand(const String& cmd) {
+  if (g_fwPushActive) return;
+  if (cmd.length() == 0) return;
+  
   if (cmd.startsWith("list")) {
     slaveManager.printAllSlaves();
     
@@ -144,9 +147,17 @@ void SerialCommands::handleCommand(const String& cmd) {
       Serial.println("Other slaves will be ignored during update");
       espnowHandler.sendFwBegin(slaveManager.getSlaves()[id].mac, sessionId, version, sizeBytes, crc);
       Serial.println("FWPUSH READY - waiting for chunks");
+      
+      // Vider le buffer série avant de lire le binaire
+      while (Serial.available() > 0) {
+        Serial.read();
+      }
+      delay(100);
+      
       uint32_t offset = 0;
       uint8_t buf[188];
       const uint32_t CHUNK_SIZE = 188 - 12;
+      Serial.setTimeout(1000);
       while (offset < sizeBytes) {
         uint32_t toRead = (sizeBytes - offset > CHUNK_SIZE) ? CHUNK_SIZE : (sizeBytes - offset);
         int n = Serial.readBytes((char*)buf, toRead);
@@ -165,8 +176,13 @@ void SerialCommands::handleCommand(const String& cmd) {
           return; 
         }
         uint32_t chunkCrc = crc32_finalize(crc32_update(crc32_init(), buf, n));
-        if (!espnowHandler.sendFwChunk(slaveManager.getSlaves()[id].mac, sessionId, offset, buf, n, chunkCrc)) {
-          Serial.println("ERROR: Failed to send FW_CHUNK");
+        bool sent = false;
+        for (int retry = 0; retry < 3 && !sent; retry++) {
+          if (retry > 0) delay(5);
+          sent = espnowHandler.sendFwChunk(slaveManager.getSlaves()[id].mac, sessionId, offset, buf, n, chunkCrc);
+        }
+        if (!sent) {
+          Serial.printf("ERROR: Failed to send FW_CHUNK at offset %u after retries\n", offset);
           espnowHandler.setFwActive(false);
           espnowHandler.setFwTargetMac(nullptr);
           g_fwPushActive = false;
@@ -178,10 +194,18 @@ void SerialCommands::handleCommand(const String& cmd) {
         }
         delay(1);
       }
+      Serial.setTimeout(1000);
       Serial.println("FWPUSH done, sending FW_END");
       espnowHandler.sendFwEnd(slaveManager.getSlaves()[id].mac, sessionId);
       espnowHandler.setFwActive(false);
       espnowHandler.setFwTargetMac(nullptr);
+      
+      // Vider le buffer série après la lecture du binaire
+      delay(100);
+      while (Serial.available() > 0) {
+        Serial.read();
+      }
+      
       Serial.println("Other slaves resumed");
       g_fwPushActive = false;
     }
