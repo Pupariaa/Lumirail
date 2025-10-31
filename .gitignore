@@ -36,3 +36,4 @@ node_modules/
 package-lock.json
 yarn.lock
 Firmwares/README.md
+*.bin*
