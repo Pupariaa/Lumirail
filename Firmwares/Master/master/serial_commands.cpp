@@ -192,7 +192,7 @@ void SerialCommands::handleCommand(const String& cmd) {
         if (offset % 10000 < n || offset == sizeBytes) {
           Serial.printf("Progress: %u/%u bytes (%.1f%%)\n", offset, sizeBytes, (float)offset * 100.0 / sizeBytes);
         }
-        delay(1);
+        delay(5);
       }
       Serial.setTimeout(1000);
       Serial.println("FWPUSH done, sending FW_END");

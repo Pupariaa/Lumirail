@@ -270,14 +270,23 @@ bool EspNowHandler::sendFwChunk(const uint8_t* mac, uint16_t sessionId, uint32_t
   msg.payloadLength = 12 + len;
   msg.checksum = calculateChecksum(msg);
   esp_now_peer_info_t peerInfo;
+  memset(&peerInfo, 0, sizeof(peerInfo));
   memcpy(peerInfo.peer_addr, mac, 6);
   peerInfo.channel = 1;
   peerInfo.ifidx = WIFI_IF_AP;
   peerInfo.encrypt = false;
-  esp_now_add_peer(&peerInfo);
+  esp_err_t addRes = esp_now_add_peer(&peerInfo);
+  if (addRes != ESP_OK && addRes != ESP_ERR_ESPNOW_EXIST) {
+    Serial.printf("FW_CHUNK add_peer failed: %s\n", esp_err_to_name(addRes));
+    return false;
+  }
   esp_err_t res = esp_now_send(mac, (uint8_t *)&msg, sizeof(EspNowMessage));
   esp_now_del_peer(mac);
-  return (res == ESP_OK || res == ESP_ERR_ESPNOW_IF);
+  if (res != ESP_OK && res != ESP_ERR_ESPNOW_IF) {
+    Serial.printf("FW_CHUNK send failed: %s (offset=%u)\n", esp_err_to_name(res), offset);
+    return false;
+  }
+  return true;
 }
 
 bool EspNowHandler::sendFwEnd(const uint8_t* mac, uint16_t sessionId) {
