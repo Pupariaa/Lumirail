@@ -144,6 +144,13 @@ void SerialCommands::handleCommand(const String& cmd) {
       espnowHandler.setFwTargetMac(slaveManager.getSlaves()[id].mac);
       espnowHandler.setFwActive(true);
       espnowHandler.setLastFwAckOffset(0);
+      if (!espnowHandler.addFwTargetPeer()) {
+        Serial.println("ERROR: Failed to add FW target peer");
+        espnowHandler.setFwActive(false);
+        espnowHandler.setFwTargetMac(nullptr);
+        g_fwPushActive = false;
+        return;
+      }
       Serial.println("FWPUSH active, sending FW_BEGIN...");
       Serial.println("Other slaves will be ignored during update");
       espnowHandler.sendFwBegin(slaveManager.getSlaves()[id].mac, sessionId, version, sizeBytes, crc);
@@ -165,6 +172,7 @@ void SerialCommands::handleCommand(const String& cmd) {
         int n = Serial.readBytes((char*)buf, toRead);
         if (n <= 0) { 
           Serial.println("ERROR: Serial read timeout"); 
+          espnowHandler.removeFwTargetPeer();
           espnowHandler.setFwActive(false);
           espnowHandler.setFwTargetMac(nullptr);
           g_fwPushActive = false; 
@@ -172,6 +180,7 @@ void SerialCommands::handleCommand(const String& cmd) {
         }
         if ((uint32_t)n != toRead) { 
           Serial.println("ERROR: Serial read incomplete"); 
+          espnowHandler.removeFwTargetPeer();
           espnowHandler.setFwActive(false);
           espnowHandler.setFwTargetMac(nullptr);
           g_fwPushActive = false; 
@@ -192,6 +201,7 @@ void SerialCommands::handleCommand(const String& cmd) {
         }
         if (!sent) {
           Serial.printf("ERROR: Failed to send FW_CHUNK at offset %u after retries\n", offset);
+          espnowHandler.removeFwTargetPeer();
           espnowHandler.setFwActive(false);
           espnowHandler.setFwTargetMac(nullptr);
           g_fwPushActive = false;
@@ -207,6 +217,7 @@ void SerialCommands::handleCommand(const String& cmd) {
         Serial.printf("Waiting for ACK: current=%u expected=%u\n", currentAck, offset);
         if (!espnowHandler.waitForFwAck(offset, 3000)) {
           Serial.printf("ERROR: Timeout waiting for FW_ACK at offset %u (last received: %u)\n", offset, espnowHandler.getLastFwAckOffset());
+          espnowHandler.removeFwTargetPeer();
           espnowHandler.setFwActive(false);
           espnowHandler.setFwTargetMac(nullptr);
           g_fwPushActive = false;
@@ -221,6 +232,8 @@ void SerialCommands::handleCommand(const String& cmd) {
       Serial.setTimeout(1000);
       Serial.println("FWPUSH done, sending FW_END");
       espnowHandler.sendFwEnd(slaveManager.getSlaves()[id].mac, sessionId);
+      delay(200);
+      espnowHandler.removeFwTargetPeer();
       espnowHandler.setFwActive(false);
       espnowHandler.setFwTargetMac(nullptr);
       

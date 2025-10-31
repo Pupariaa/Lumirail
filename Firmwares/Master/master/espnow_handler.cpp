@@ -322,6 +322,35 @@ bool EspNowHandler::waitForFwAck(uint32_t expectedOffset, uint32_t timeoutMs) {
   return false;
 }
 
+bool EspNowHandler::addFwTargetPeer() {
+  if (fwTargetMac[0] == 0 && fwTargetMac[1] == 0 && fwTargetMac[2] == 0 && 
+      fwTargetMac[3] == 0 && fwTargetMac[4] == 0 && fwTargetMac[5] == 0) {
+    return false;
+  }
+  esp_now_peer_info_t peerInfo;
+  memset(&peerInfo, 0, sizeof(peerInfo));
+  memcpy(peerInfo.peer_addr, fwTargetMac, 6);
+  peerInfo.channel = 1;
+  peerInfo.ifidx = WIFI_IF_AP;
+  peerInfo.encrypt = false;
+  esp_err_t res = esp_now_add_peer(&peerInfo);
+  if (res != ESP_OK && res != ESP_ERR_ESPNOW_EXIST) {
+    Serial.printf("ERROR: Failed to add FW target peer: %s\n", esp_err_to_name(res));
+    return false;
+  }
+  Serial.println("FW target peer added for receiving ACKs");
+  return true;
+}
+
+void EspNowHandler::removeFwTargetPeer() {
+  if (fwTargetMac[0] == 0 && fwTargetMac[1] == 0 && fwTargetMac[2] == 0 && 
+      fwTargetMac[3] == 0 && fwTargetMac[4] == 0 && fwTargetMac[5] == 0) {
+    return;
+  }
+  esp_now_del_peer(fwTargetMac);
+  Serial.println("FW target peer removed");
+}
+
 void EspNowHandler::onDataSent(const esp_now_send_info_t *info, esp_now_send_status_t status) {
   if (status == ESP_NOW_SEND_SUCCESS) {
     slaveManager.getStats()->messagesSent++;

@@ -25,6 +25,8 @@ public:
   uint32_t getLastFwAckOffset() const { return lastFwAckOffset; }
   void setLastFwAckOffset(uint32_t offset) { lastFwAckOffset = offset; }
   bool waitForFwAck(uint32_t expectedOffset, uint32_t timeoutMs = 5000);
+  bool addFwTargetPeer();
+  void removeFwTargetPeer();
   
   uint16_t getSequenceCounter() { return sequenceCounter; }
   
