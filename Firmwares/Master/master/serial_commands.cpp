@@ -177,9 +177,16 @@ void SerialCommands::handleCommand(const String& cmd) {
         }
         uint32_t chunkCrc = crc32_finalize(crc32_update(crc32_init(), buf, n));
         bool sent = false;
-        for (int retry = 0; retry < 3 && !sent; retry++) {
-          if (retry > 0) delay(5);
+        for (int retry = 0; retry < 10 && !sent; retry++) {
+          if (retry > 0) {
+            // Délai progressif pour ESP_ERR_ESPNOW_NO_MEM
+            delay(retry * 10);
+          }
           sent = espnowHandler.sendFwChunk(slaveManager.getSlaves()[id].mac, sessionId, offset, buf, n, chunkCrc);
+          if (!sent && retry < 9) {
+            // Si erreur NO_MEM, attendre un peu plus pour laisser la queue se vider
+            delay(20);
+          }
         }
         if (!sent) {
           Serial.printf("ERROR: Failed to send FW_CHUNK at offset %u after retries\n", offset);
@@ -192,7 +199,7 @@ void SerialCommands::handleCommand(const String& cmd) {
         if (offset % 10000 < n || offset == sizeBytes) {
           Serial.printf("Progress: %u/%u bytes (%.1f%%)\n", offset, sizeBytes, (float)offset * 100.0 / sizeBytes);
         }
-        delay(5);
+        delay(10);
       }
       Serial.setTimeout(1000);
       Serial.println("FWPUSH done, sending FW_END");
