@@ -5,7 +5,9 @@
 
 EspNowHandler espnowHandler;
 
-EspNowHandler::EspNowHandler() : sequenceCounter(0), lastBroadcast(0), broadcastPeerAdded(false), fwActive(false) {}
+EspNowHandler::EspNowHandler() : sequenceCounter(0), lastBroadcast(0), broadcastPeerAdded(false), fwActive(false) {
+  memset(fwTargetMac, 0, 6);
+}
 
 void EspNowHandler::init() {
   // WiFi AP is started in setup()
@@ -231,7 +233,6 @@ bool EspNowHandler::sendBroadcastCommand(const char* command) {
 }
 
 bool EspNowHandler::sendFwBegin(const uint8_t* mac, uint16_t sessionId, const char version[8], uint32_t sizeBytes, uint32_t crc32) {
-  fwActive = true;
   EspNowMessage msg;
   msg.version = 1;
   msg.type = MSG_FW_BEGIN;
@@ -241,9 +242,7 @@ bool EspNowHandler::sendFwBegin(const uint8_t* mac, uint16_t sessionId, const ch
   memcpy(p + 2, version, 8);
   p[10] = sizeBytes & 0xFF; p[11] = (sizeBytes >> 8) & 0xFF; p[12] = (sizeBytes >> 16) & 0xFF; p[13] = (sizeBytes >> 24) & 0xFF;
   p[14] = crc32 & 0xFF; p[15] = (crc32 >> 8) & 0xFF; p[16] = (crc32 >> 16) & 0xFF; p[17] = (crc32 >> 24) & 0xFF;
-  extern IPAddress apIP;
-  p[18] = apIP[0]; p[19] = apIP[1]; p[20] = apIP[2]; p[21] = apIP[3];
-  msg.payloadLength = 22;
+  msg.payloadLength = 18;
   msg.checksum = calculateChecksum(msg);
   esp_now_peer_info_t peerInfo;
   memcpy(peerInfo.peer_addr, mac, 6);
@@ -297,7 +296,6 @@ bool EspNowHandler::sendFwEnd(const uint8_t* mac, uint16_t sessionId) {
   esp_now_add_peer(&peerInfo);
   esp_err_t res = esp_now_send(mac, (uint8_t *)&msg, sizeof(EspNowMessage));
   esp_now_del_peer(mac);
-  fwActive = false;
   return (res == ESP_OK || res == ESP_ERR_ESPNOW_IF);
 }
 
@@ -318,6 +316,11 @@ void EspNowHandler::onDataReceive(const esp_now_recv_info_t *info, const uint8_t
   
   if (msg->checksum != calculateChecksum(*msg)) {
     Serial.println("ERROR: Invalid checksum");
+    return;
+  }
+  
+  // Si une mise à jour est en cours, ignorer les messages des autres slaves
+  if (espnowHandler.fwActive && memcmp(mac_addr, espnowHandler.getFwTargetMac(), 6) != 0) {
     return;
   }
   

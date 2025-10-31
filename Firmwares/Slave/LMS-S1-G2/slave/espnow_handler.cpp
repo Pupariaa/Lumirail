@@ -236,7 +236,7 @@ void EspNowHandler::handleFwBegin(const uint8_t* mac, EspNowMessage* msg) {
     sendNack(mac, msg->sequence);
     return;
   }
-  if (msg->payloadLength < 2 + 8 + 4 + 4 + 4) {
+  if (msg->payloadLength < 2 + 8 + 4 + 4) {
     Serial.println("FW_BEGIN NACK: invalid payload length");
     sendNack(mac, msg->sequence);
     return;
@@ -246,7 +246,6 @@ void EspNowHandler::handleFwBegin(const uint8_t* mac, EspNowMessage* msg) {
   memcpy(fwVersion, p + 2, 8);
   fwTotalSize = (uint32_t)p[10] | ((uint32_t)p[11] << 8) | ((uint32_t)p[12] << 16) | ((uint32_t)p[13] << 24);
   fwCrcExpected = (uint32_t)p[14] | ((uint32_t)p[15] << 8) | ((uint32_t)p[16] << 16) | ((uint32_t)p[17] << 24);
-  IPAddress masterIP(p[18], p[19], p[20], p[21]);
 
   if (fwTotalSize == 0 || fwTotalSize > (extFlash.sizeBytes() - 0x1000)) {
     Serial.println("FW_BEGIN NACK: invalid size");
@@ -279,115 +278,21 @@ void EspNowHandler::handleFwBegin(const uint8_t* mac, EspNowMessage* msg) {
   fwExpectedOffset = 0;
   fwCrcAccum = crc32_init();
   fwActive = true;
-  Serial.println("FW_BEGIN OK");
+  Serial.println("FW_BEGIN OK - waiting for chunks");
 
-  Serial.print("Connecting TCP to "); Serial.println(masterIP);
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("Connecting to LumiRail AP...");
-    WiFi.begin("LumiRail");
-    uint32_t t0 = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 10000) {
-      delay(100);
-      if ((millis() - t0) % 1000 < 100) {
-        Serial.print("WiFi status: "); Serial.println(WiFi.status());
-      }
-    }
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.print("ERROR: WiFi STA not connected, status="); Serial.println(WiFi.status());
-      sendNack(mac, msg->sequence);
-      return;
-    }
-  }
-  Serial.print("STA IP: "); Serial.println(WiFi.localIP());
-  Serial.print("Gateway: "); Serial.println(WiFi.gatewayIP());
-  Serial.print("Subnet: "); Serial.println(WiFi.subnetMask());
-  WiFiClient client;
-  client.setTimeout(5000);
-  Serial.print("Attempting TCP connect to "); Serial.print(masterIP); Serial.println(":5001");
-  bool ok = client.connect(masterIP, 5001);
-  if (!ok) {
-    Serial.print("TCP connect failed, error code: "); Serial.println(client.getWriteError());
-    delay(500);
-    Serial.println("Retry 1...");
-    ok = client.connect(masterIP, 5001);
-  }
-  if (!ok) {
-    Serial.print("TCP connect failed retry 1, error code: "); Serial.println(client.getWriteError());
-    delay(1000);
-    Serial.println("Retry 2...");
-    ok = client.connect(masterIP, 5001);
-  }
-  if (!ok) {
-    Serial.print("ERROR: TCP connect failed after retries, error code: "); Serial.println(client.getWriteError());
-    sendNack(mac, msg->sequence);
-    return;
-  }
-  Serial.println("TCP connected successfully");
-  uint8_t buf[1024];
-  uint32_t remaining = fwTotalSize;
-  while (remaining > 0) {
-    int toRead = remaining > sizeof(buf) ? sizeof(buf) : remaining;
-    int n = client.readBytes((char*)buf, toRead);
-    if (n <= 0) { Serial.println("ERROR: TCP read timeout"); client.stop(); sendNack(mac, msg->sequence); return; }
-    if (!extFlash.writeRange(0x40 + fwExpectedOffset, buf, n, false)) { client.stop(); sendNack(mac, msg->sequence); return; }
-    fwCrcAccum = crc32_update(fwCrcAccum, buf, n);
-    fwExpectedOffset += (uint32_t)n;
-    remaining -= (uint32_t)n;
-  }
-  client.stop();
-
-  uint32_t finalCrc = crc32_finalize(fwCrcAccum);
-  if (finalCrc != fwCrcExpected) {
-    Serial.print("FW TCP CRC mismatch exp="); Serial.print(fwCrcExpected, HEX); Serial.print(" got="); Serial.println(finalCrc, HEX);
-    sendNack(mac, msg->sequence);
-    return;
-  }
-
-  FwHeader hdr2;
-  if (!extFlash.readData(0, (uint8_t *)&hdr2, sizeof(hdr2))) { sendNack(mac, msg->sequence); return; }
-  hdr2.headerCrc32 = fw_header_crc(hdr2);
-  if (!extFlash.writeRange(0, (const uint8_t *)&hdr2, sizeof(hdr2), true)) { sendNack(mac, msg->sequence); return; }
-
-  uint8_t vMaj = (uint8_t)fwVersion[0];
-  uint8_t vMin = (uint8_t)fwVersion[2];
-  uint8_t vPat = (uint8_t)fwVersion[4];
-  if (eepromConfig) eepromConfig->setUpdatePending(vMaj, vMin, vPat);
-
-  EspNowMessage ack2;
-  ack2.version = 1;
-  ack2.type = MSG_FW_ACK;
-  ack2.sequence = msg->sequence;
-  ack2.payloadLength = 6;
-  ack2.payload[0] = fwSessionId & 0xFF;
-  ack2.payload[1] = (fwSessionId >> 8) & 0xFF;
-  ack2.payload[2] = fwExpectedOffset & 0xFF;
-  ack2.payload[3] = (fwExpectedOffset >> 8) & 0xFF;
-  ack2.payload[4] = (fwExpectedOffset >> 16) & 0xFF;
-  ack2.payload[5] = (fwExpectedOffset >> 24) & 0xFF;
-  ack2.checksum = calculateChecksum(ack2);
-  esp_now_peer_info_t peerInfo2; memset(&peerInfo2, 0, sizeof(peerInfo2));
-  memcpy(peerInfo2.peer_addr, mac, 6);
-  peerInfo2.channel = 1; peerInfo2.ifidx = WIFI_IF_STA; peerInfo2.encrypt = false;
-  esp_now_add_peer(&peerInfo2);
-  esp_now_send(mac, (uint8_t *)&ack2, sizeof(EspNowMessage));
-  esp_now_del_peer(mac);
-
-  delay(100);
-  ESP.restart();
-
-  EspNowMessage simpleAck;
-  simpleAck.version = 1;
-  simpleAck.type = MSG_ACK;
-  simpleAck.sequence = msg->sequence;
-  simpleAck.payloadLength = 0;
-  simpleAck.checksum = calculateChecksum(simpleAck);
-  esp_now_peer_info_t peer2; memset(&peer2, 0, sizeof(peer2));
-  memcpy(peer2.peer_addr, mac, 6);
-  peer2.channel = 1;
-  peer2.ifidx = WIFI_IF_STA;
-  peer2.encrypt = false;
-  esp_now_add_peer(&peer2);
-  esp_now_send(mac, (uint8_t *)&simpleAck, sizeof(EspNowMessage));
+  EspNowMessage ack;
+  ack.version = 1;
+  ack.type = MSG_ACK;
+  ack.sequence = msg->sequence;
+  ack.payloadLength = 0;
+  ack.checksum = calculateChecksum(ack);
+  esp_now_peer_info_t peerInfo; memset(&peerInfo, 0, sizeof(peerInfo));
+  memcpy(peerInfo.peer_addr, mac, 6);
+  peerInfo.channel = 1;
+  peerInfo.ifidx = WIFI_IF_STA;
+  peerInfo.encrypt = false;
+  esp_now_add_peer(&peerInfo);
+  esp_now_send(mac, (uint8_t *)&ack, sizeof(EspNowMessage));
   esp_now_del_peer(mac);
 }
 

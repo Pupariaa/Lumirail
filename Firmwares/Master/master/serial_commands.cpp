@@ -138,31 +138,51 @@ void SerialCommands::handleCommand(const String& cmd) {
       memcpy(version, ver.c_str(), ver.length());
       if (id < 0 || id >= MAX_SLAVES || !slaveManager.getSlaves()[id].linked) { Serial.println("ERROR: Invalid slave id"); return; }
       g_fwPushActive = true;
+      espnowHandler.setFwTargetMac(slaveManager.getSlaves()[id].mac);
+      espnowHandler.setFwActive(true);
       Serial.println("FWPUSH active, sending FW_BEGIN...");
+      Serial.println("Other slaves will be ignored during update");
       espnowHandler.sendFwBegin(slaveManager.getSlaves()[id].mac, sessionId, version, sizeBytes, crc);
-      delay(1000);
-      extern IPAddress apIP;
-      Serial.print("FWPUSH waiting for slave TCP connect at "); Serial.println(apIP);
-      extern WiFiServer fwServer;
-      WiFiClient client = fwServer.available();
-      uint32_t startWait = millis();
-      while (!client && millis() - startWait < 30000) { client = fwServer.available(); delay(10); }
-      if (!client) { Serial.println("ERROR: Slave TCP connect timeout"); g_fwPushActive = false; return; }
-      Serial.println("FWPUSH READY");
-      uint32_t remaining = sizeBytes;
-      uint8_t buf[1024];
-      while (remaining > 0) {
-        int toRead = remaining > sizeof(buf) ? sizeof(buf) : remaining;
+      Serial.println("FWPUSH READY - waiting for chunks");
+      uint32_t offset = 0;
+      uint8_t buf[188];
+      const uint32_t CHUNK_SIZE = 188 - 12;
+      while (offset < sizeBytes) {
+        uint32_t toRead = (sizeBytes - offset > CHUNK_SIZE) ? CHUNK_SIZE : (sizeBytes - offset);
         int n = Serial.readBytes((char*)buf, toRead);
-        if (n <= 0) { Serial.println("ERROR: Serial read timeout"); client.stop(); g_fwPushActive = false; return; }
-        int sent = client.write(buf, n);
-        if (sent != n) { Serial.println("ERROR: TCP write failed"); client.stop(); g_fwPushActive = false; return; }
-        remaining -= (uint32_t)n;
+        if (n <= 0) { 
+          Serial.println("ERROR: Serial read timeout"); 
+          espnowHandler.setFwActive(false);
+          espnowHandler.setFwTargetMac(nullptr);
+          g_fwPushActive = false; 
+          return; 
+        }
+        if ((uint32_t)n != toRead) { 
+          Serial.println("ERROR: Serial read incomplete"); 
+          espnowHandler.setFwActive(false);
+          espnowHandler.setFwTargetMac(nullptr);
+          g_fwPushActive = false; 
+          return; 
+        }
+        uint32_t chunkCrc = crc32_finalize(crc32_update(crc32_init(), buf, n));
+        if (!espnowHandler.sendFwChunk(slaveManager.getSlaves()[id].mac, sessionId, offset, buf, n, chunkCrc)) {
+          Serial.println("ERROR: Failed to send FW_CHUNK");
+          espnowHandler.setFwActive(false);
+          espnowHandler.setFwTargetMac(nullptr);
+          g_fwPushActive = false;
+          return;
+        }
+        offset += n;
+        if (offset % 10000 < n || offset == sizeBytes) {
+          Serial.printf("Progress: %u/%u bytes (%.1f%%)\n", offset, sizeBytes, (float)offset * 100.0 / sizeBytes);
+        }
+        delay(1);
       }
-      client.flush();
-      client.stop();
       Serial.println("FWPUSH done, sending FW_END");
       espnowHandler.sendFwEnd(slaveManager.getSlaves()[id].mac, sessionId);
+      espnowHandler.setFwActive(false);
+      espnowHandler.setFwTargetMac(nullptr);
+      Serial.println("Other slaves resumed");
       g_fwPushActive = false;
     }
   } else {

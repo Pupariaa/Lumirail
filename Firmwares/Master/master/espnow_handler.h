@@ -20,6 +20,8 @@ public:
   bool sendFwEnd(const uint8_t* mac, uint16_t sessionId);
   bool isFwActive() const { return fwActive; }
   void setFwActive(bool v) { fwActive = v; }
+  void setFwTargetMac(const uint8_t* mac) { if (mac) memcpy(fwTargetMac, mac, 6); else memset(fwTargetMac, 0, 6); }
+  const uint8_t* getFwTargetMac() const { return fwTargetMac; }
   
   uint16_t getSequenceCounter() { return sequenceCounter; }
   
@@ -32,6 +34,7 @@ private:
   static void onDataSent(const esp_now_send_info_t *info, esp_now_send_status_t status);
   static void onDataReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len);
   bool fwActive;
+  uint8_t fwTargetMac[6];
 };
 
 extern EspNowHandler espnowHandler;
