@@ -147,6 +147,7 @@ void SerialCommands::handleCommand(const String& cmd) {
       Serial.println("FWPUSH active, sending FW_BEGIN...");
       Serial.println("Other slaves will be ignored during update");
       espnowHandler.sendFwBegin(slaveManager.getSlaves()[id].mac, sessionId, version, sizeBytes, crc);
+      delay(300);
       Serial.println("FWPUSH READY - waiting for chunks");
       
       // Vider le buffer série avant de lire le binaire
@@ -198,14 +199,20 @@ void SerialCommands::handleCommand(const String& cmd) {
         }
         offset += n;
         
+        // Attendre un peu pour laisser le Slave traiter et envoyer l'ACK
+        delay(50);
+        
         // Attendre l'ACK avant d'envoyer le chunk suivant
-        if (!espnowHandler.waitForFwAck(offset, 2000)) {
-          Serial.printf("ERROR: Timeout waiting for FW_ACK at offset %u\n", offset);
+        uint32_t currentAck = espnowHandler.getLastFwAckOffset();
+        Serial.printf("Waiting for ACK: current=%u expected=%u\n", currentAck, offset);
+        if (!espnowHandler.waitForFwAck(offset, 3000)) {
+          Serial.printf("ERROR: Timeout waiting for FW_ACK at offset %u (last received: %u)\n", offset, espnowHandler.getLastFwAckOffset());
           espnowHandler.setFwActive(false);
           espnowHandler.setFwTargetMac(nullptr);
           g_fwPushActive = false;
           return;
         }
+        Serial.printf("ACK received: %u\n", espnowHandler.getLastFwAckOffset());
         
         if (offset % 10000 < n || offset == sizeBytes) {
           Serial.printf("Progress: %u/%u bytes (%.1f%%)\n", offset, sizeBytes, (float)offset * 100.0 / sizeBytes);

@@ -343,8 +343,13 @@ void EspNowHandler::onDataReceive(const esp_now_recv_info_t *info, const uint8_t
   }
   
   // Si une mise à jour est en cours, ignorer les messages des autres slaves
-  if (espnowHandler.fwActive && memcmp(mac_addr, espnowHandler.getFwTargetMac(), 6) != 0) {
-    return;
+  if (espnowHandler.fwActive) {
+    bool isTarget = (memcmp(mac_addr, espnowHandler.getFwTargetMac(), 6) == 0);
+    if (!isTarget) {
+      return; // Ignorer les autres slaves
+    }
+    // Log pour debug: on reçoit un message du slave cible
+    Serial.printf("FW_ACTIVE: Received msg type=0x%02X from target\n", msg->type);
   }
   
   slaveManager.getStats()->messagesReceived++;
