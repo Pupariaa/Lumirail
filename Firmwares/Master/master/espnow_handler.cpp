@@ -24,6 +24,9 @@ void EspNowHandler::init() {
 }
 
 void EspNowHandler::update() {
+  // Ne pas envoyer de broadcasts pendant une mise à jour firmware
+  if (fwActive) return;
+  
   uint64_t now = millis();
   if (now - lastBroadcast > BROADCAST_INTERVAL) {
     sendBroadcastDiscovery();
