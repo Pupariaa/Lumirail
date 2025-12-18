@@ -15,6 +15,7 @@ bool AT24C02::begin(uint8_t sdaPin, uint8_t sclPin) {
   this->sclPin = sclPin;
   Wire.begin(sdaPin, sclPin);
   Wire.setClock(100000);
+  Wire.setTimeOut(1000);
   delay(10);
   devicePresent = checkConnection();
   return devicePresent;
@@ -52,10 +53,7 @@ bool AT24C02::writeByte(uint8_t address, uint8_t data) {
     }
     
     if (error == 2 || error == 3) {
-      Wire.end();
-      delay(1);
-      Wire.begin(18, 19);
-      Wire.setClock(100000);
+      resetBus();
     }
     
     delay(1);
@@ -146,7 +144,7 @@ bool AT24C02::writePage(uint8_t startAddress, uint8_t* data, uint8_t length) {
       delay(1);
     }
     
-    delay(10);  // Increased delay for EEPROM write cycle (AT24C02 needs 5ms max, 10ms is safe)
+    delay(10); 
     bytesWritten += bytesToWrite;
     
     if (currentAddr + bytesToWrite >= pageEnd) {
@@ -155,7 +153,6 @@ bool AT24C02::writePage(uint8_t startAddress, uint8_t* data, uint8_t length) {
     }
   }
   
-  // Additional delay at end to ensure all writes complete
   delay(10);
   
   return true;

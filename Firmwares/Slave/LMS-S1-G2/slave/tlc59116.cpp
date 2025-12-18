@@ -10,13 +10,13 @@ bool TLC59116::begin(uint8_t sdaPin, uint8_t sclPin) {
   
   Wire.begin(sdaPin, sclPin);
   Wire.setClock(100000);
+  Wire.setTimeOut(1000);
   delay(10);
   
-  // Check if device is present (with retry)
   devicePresent = false;
   for (uint8_t retry = 0; retry < 3; retry++) {
     Wire.beginTransmission(deviceAddr);
-    uint8_t error = Wire.endTransmission();
+    uint8_t error = Wire.endTransmission(true);
     
     if (error == 0) {
       devicePresent = true;
@@ -24,7 +24,6 @@ bool TLC59116::begin(uint8_t sdaPin, uint8_t sclPin) {
     }
     
     if (error == 2 || error == 3) {
-      // NACK error - reset bus
       Wire.end();
       delay(1);
       Wire.begin(sdaPin, sclPin);
@@ -40,7 +39,7 @@ bool TLC59116::begin(uint8_t sdaPin, uint8_t sclPin) {
   if (!devicePresent) {
     Serial.print("ERROR: TLC59116 at 0x");
     Serial.print(deviceAddr, HEX);
-    Serial.println(" not responding");
+    Serial.print(" not responding\n");
     return false;
   }
   
@@ -60,35 +59,33 @@ bool TLC59116::begin(uint8_t sdaPin, uint8_t sclPin) {
     Serial.print(deviceAddr, HEX);
     Serial.print(" (error: ");
     Serial.print(resetError);
-    Serial.println(")");
+    Serial.print(")\n");
   }
   delay(10);
   
-  // Configure MODE1: Normal mode, no sub-address, auto-increment disabled
-  if (!writeRegister(TLC59116_MODE1, 0x00)) {
+  // Configure MODE1: Normal mode
+  if (!writeRegister(PCA985PW_MODE1, 0x00)) {
     Serial.print("ERROR: Failed to write MODE1 to 0x");
-    Serial.println(deviceAddr, HEX);
+    Serial.print(deviceAddr, HEX);
+    Serial.print("\n");
     return false;
   }
   
-  // Configure MODE2: Open-drain outputs
-  if (!writeRegister(TLC59116_MODE2, 0x00)) {
+  delay(10);
+  
+  // Configure MODE2: Totem pole outputs
+  if (!writeRegister(PCA985PW_MODE2, 0x04)) {
     Serial.print("ERROR: Failed to write MODE2 to 0x");
-    Serial.println(deviceAddr, HEX);
-    return false;
-  }
-  
-  // Enable all LED outputs in PWM mode
-  if (!enableAllLedPWM()) {
-    Serial.print("ERROR: Failed to configure LEDOUT registers for 0x");
-    Serial.println(deviceAddr, HEX);
+    Serial.print(deviceAddr, HEX);
+    Serial.print("\n");
     return false;
   }
   
   // Set all PWM to 0 initially
   if (!allOff()) {
     Serial.print("WARNING: Failed to turn off all LEDs for 0x");
-    Serial.println(deviceAddr, HEX);
+    Serial.print(deviceAddr, HEX);
+    Serial.print("\n");
   }
   
   // Serial.print("OK: TLC59116 at 0x");
@@ -105,18 +102,18 @@ bool TLC59116::writeRegister(uint8_t reg, uint8_t data) {
     Wire.beginTransmission(deviceAddr);
     Wire.write(reg);
     Wire.write(data);
-    uint8_t error = Wire.endTransmission();
+    uint8_t error = Wire.endTransmission(true);
     
     if (error == 0) {
       return true;
     }
     
     if (error == 2 || error == 3) {
-      // NACK error - reset bus
       Wire.end();
       delay(1);
       Wire.begin(sdaPin, sclPin);
       Wire.setClock(100000);
+      Wire.setTimeOut(1000);
       delay(1);
     }
     
@@ -130,36 +127,78 @@ bool TLC59116::writeRegister(uint8_t reg, uint8_t data) {
 
 bool TLC59116::setPWM(uint8_t channel, uint8_t value) {
   if (channel > 15) return false;
-  return writeRegister(TLC59116_PWM0 + channel, value);
+  
+  uint16_t pwmValue = ((uint16_t)value * 4095) / 255;
+  
+  uint8_t onLow = 0x06 + (channel * 4);
+  uint8_t onHigh = 0x07 + (channel * 4);
+  uint8_t offLow = 0x08 + (channel * 4);
+  uint8_t offHigh = 0x09 + (channel * 4);
+  
+  bool r1 = writeRegister(onLow, 0x00);
+  delayMicroseconds(200);
+  bool r2 = writeRegister(onHigh, 0x00);
+  delayMicroseconds(200);
+  bool r3 = writeRegister(offLow, pwmValue & 0xFF);
+  delayMicroseconds(200);
+  bool r4 = writeRegister(offHigh, (pwmValue >> 8) & 0xFF);
+  
+  bool success = r1 && r2 && r3 && r4;
+  
+  return success;
 }
 
 bool TLC59116::setAllPWM(uint8_t value) {
   if (!devicePresent) return false;
   
-  for (uint8_t i = 0; i < 16; i++) {
-    if (!writeRegister(TLC59116_PWM0 + i, value)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool TLC59116::setLedoutMode(uint8_t bank, uint8_t mode) {
-  if (bank > 3) return false;
-  return writeRegister(TLC59116_LEDOUT0 + bank, mode);
-}
-
-bool TLC59116::enableAllLedPWM() {
-  // Each LEDOUT register controls 4 LEDs, 0xFF = all PWM mode
+  uint16_t pwmValue = ((uint16_t)value * 4095) / 255;
+  
   bool success = true;
-  success &= writeRegister(TLC59116_LEDOUT0, 0xFF);
-  success &= writeRegister(TLC59116_LEDOUT1, 0xFF);
-  success &= writeRegister(TLC59116_LEDOUT2, 0xFF);
-  success &= writeRegister(TLC59116_LEDOUT3, 0xFF);
+  for (uint8_t ch = 0; ch < 16; ch++) {
+    uint8_t onLow = 0x06 + (ch * 4);
+    uint8_t onHigh = 0x07 + (ch * 4);
+    uint8_t offLow = 0x08 + (ch * 4);
+    uint8_t offHigh = 0x09 + (ch * 4);
+    success &= writeRegister(onLow, 0x00);
+    delayMicroseconds(100);
+    success &= writeRegister(onHigh, 0x00);
+    delayMicroseconds(100);
+    success &= writeRegister(offLow, pwmValue & 0xFF);
+    delayMicroseconds(100);
+    success &= writeRegister(offHigh, (pwmValue >> 8) & 0xFF);
+    delayMicroseconds(100);
+  }
+  
   return success;
 }
 
+bool TLC59116::setLedoutMode(uint8_t bank, uint8_t mode) {
+  return true;
+}
+
+bool TLC59116::enableAllLedPWM() {
+  return true;
+}
+
 bool TLC59116::allOff() {
-  return setAllPWM(0x00);
+  if (!devicePresent) return false;
+  
+  bool success = true;
+  for (uint8_t ch = 0; ch < 16; ch++) {
+    uint8_t onLow = 0x06 + (ch * 4);
+    uint8_t onHigh = 0x07 + (ch * 4);
+    uint8_t offLow = 0x08 + (ch * 4);
+    uint8_t offHigh = 0x09 + (ch * 4);
+    success &= writeRegister(onLow, 0x00);
+    delayMicroseconds(100);
+    success &= writeRegister(onHigh, 0x00);
+    delayMicroseconds(100);
+    success &= writeRegister(offLow, 0x00);
+    delayMicroseconds(100);
+    success &= writeRegister(offHigh, 0x00);
+    delayMicroseconds(100);
+  }
+  
+  return success;
 }
 

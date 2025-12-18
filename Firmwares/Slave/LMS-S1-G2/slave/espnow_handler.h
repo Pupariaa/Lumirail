@@ -4,8 +4,6 @@
 #include "protocol.h"
 #include "eeprom_config.h"
 #include <esp_now.h>
-#include "w25q.h"
-#include "fw_header.h"
 
 class EspNowHandler {
 public:
@@ -48,7 +46,6 @@ private:
   
   static EspNowHandler* instance;
 
-  // Firmware session state
   uint16_t fwSessionId;
   uint32_t fwExpectedOffset;
   uint32_t fwTotalSize;
@@ -57,6 +54,17 @@ private:
   char fwVersion[8];
   bool fwActive;
   uint64_t lastResendAckTime;
+  
+  static const uint32_t FW_BUFFER_SIZE = 24576;
+  uint8_t* fwBuffer;
+  uint32_t fwBufferWritePos;
+  uint32_t fwBufferFlashPos;
+  uint32_t fwFlashWriteOffset;
+  bool fwBufferActive;
+  uint32_t lastAckOffset;
+  uint64_t lastAckTime;
+  
+  void processFwBuffer();
 };
 
 extern EspNowHandler espnowHandler;

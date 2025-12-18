@@ -2,11 +2,8 @@
 #include <WiFi.h>
 #include <esp_wifi.h>
 #include <string.h>
-#include "w25q.h"
-#include "fw_header.h"
+#include <cstdlib>
 #include "crc32.h"
-
-extern W25Q extFlash;
 
 EspNowHandler espnowHandler;
 EspNowHandler* EspNowHandler::instance = nullptr;
@@ -26,7 +23,14 @@ EspNowHandler::EspNowHandler()
     fwCrcExpected(0),
     fwCrcAccum(0),
     fwActive(false),
-    lastResendAckTime(0) {
+    lastResendAckTime(0),
+    fwBuffer(nullptr),
+    fwBufferWritePos(0),
+    fwBufferFlashPos(0),
+    fwFlashWriteOffset(0),
+    fwBufferActive(false),
+    lastAckOffset(0),
+    lastAckTime(0) {
   instance = this;
 }
 
@@ -42,7 +46,7 @@ void EspNowHandler::init(EepromConfig* config) {
   esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
   
   if (esp_now_init() != ESP_OK) {
-    Serial.println("ERROR: Failed to initialize ESP-NOW");
+    Serial.print("ERROR: Failed to initialize ESP-NOW\n");
     return;
   }
   
@@ -51,12 +55,10 @@ void EspNowHandler::init(EepromConfig* config) {
   
   lastStatusSent = millis();
   lastPairRequest = 0;
-  
-  // Try to auto-pair if we have an authorized master MAC
   if (eepromConfig) {
     uint8_t authMAC[6];
     if (eepromConfig->getAuthorizedMAC(authMAC)) {
-      Serial.println("Found authorized Master MAC - will attempt auto-pairing");
+      Serial.print("Found authorized Master MAC - will attempt auto-pairing\n");
       delay(500); // Give system time to stabilize
       requestPairing();
     }
@@ -64,16 +66,16 @@ void EspNowHandler::init(EepromConfig* config) {
 }
 
 void EspNowHandler::update() {
+  if (fwBufferActive) {
+    processFwBuffer();
+  }
+  
   uint64_t now = millis();
   
   if (currentState == STATE_UNPAIRED) {
-    // If we have an authorized master MAC, try to pair with it every 3 seconds
-    // But only if we haven't received any contact from master recently
     if (eepromConfig) {
       uint8_t authMAC[6];
       if (eepromConfig->getAuthorizedMAC(authMAC)) {
-        // Only send pairing request if we haven't had contact recently
-        // (If we had contact, onDataReceive would have set us to STATE_LINKED)
         if (lastMasterContact == 0 || (now - lastMasterContact > 5000)) {
           if (now - lastPairRequest >= 3000) {
             requestPairing();
@@ -82,13 +84,13 @@ void EspNowHandler::update() {
         }
       } else {
         if (now - lastMasterContact > STATUS_INTERVAL && lastMasterContact == 0) {
-          Serial.println("Waiting for Master pairing request...");
+          Serial.print("Waiting for Master pairing request...\n");
           lastMasterContact = 1;
         }
       }
     } else {
       if (now - lastMasterContact > STATUS_INTERVAL && lastMasterContact == 0) {
-        Serial.println("Waiting for Master pairing request...");
+        Serial.print("Waiting for Master pairing request...\n");
         lastMasterContact = 1;
       }
     }
@@ -125,14 +127,16 @@ void EspNowHandler::sendStatus() {
   esp_err_t addResult = esp_now_add_peer(&peerInfo);
   if (addResult != ESP_OK && addResult != ESP_ERR_ESPNOW_EXIST) {
     Serial.print("ERROR: Failed to add peer: ");
-    Serial.println(esp_err_to_name(addResult));
+    Serial.print(esp_err_to_name(addResult));
+    Serial.print("\n");
     return;
   }
   
   esp_err_t sendResult = esp_now_send(broadcastAddr, (uint8_t *)&msg, sizeof(EspNowMessage));
   if (sendResult != ESP_OK) {
     Serial.print("ERROR: Failed to send status: ");
-    Serial.println(esp_err_to_name(sendResult));
+    Serial.print(esp_err_to_name(sendResult));
+    Serial.print("\n");
     retryCount++;
   }
 }
@@ -147,8 +151,6 @@ void EspNowHandler::requestPairing() {
     return; // No authorized master
   }
   
-  // Send a status response directly to the authorized master
-  // This will make the master aware we want to pair
   EspNowMessage msg;
   msg.version = 1;
   msg.type = MSG_STATUS_RESPONSE;
@@ -169,7 +171,8 @@ void EspNowHandler::requestPairing() {
   esp_err_t addResult = esp_now_add_peer(&peerInfo);
   if (addResult != ESP_OK && addResult != ESP_ERR_ESPNOW_EXIST) {
     Serial.print("ERROR: Failed to add authorized master peer: ");
-    Serial.println(esp_err_to_name(addResult));
+    Serial.print(esp_err_to_name(addResult));
+    Serial.print("\n");
     return;
   }
   
@@ -180,10 +183,11 @@ void EspNowHandler::requestPairing() {
       Serial.printf("%02X", authMAC[i]);
       if (i < 5) Serial.print(":");
     }
-    Serial.println();
+    Serial.print("\n");
   } else {
     Serial.print("ERROR: Failed to send auto-pairing request: ");
-    Serial.println(esp_err_to_name(sendResult));
+    Serial.print(esp_err_to_name(sendResult));
+    Serial.print("\n");
   }
   
   esp_now_del_peer(authMAC);
@@ -195,8 +199,6 @@ void EspNowHandler::sendPairResponse(const uint8_t* mac, bool accepted) {
   response.type = MSG_PAIR_RESPONSE;
   response.sequence = lastSequence;
   response.payload[0] = accepted ? 1 : 0;
-  
-  // Add serial number if available
   uint8_t payloadLen = 1;
   if (eepromConfig && accepted) {
     char serial[9];
@@ -226,78 +228,16 @@ void EspNowHandler::sendPairResponse(const uint8_t* mac, bool accepted) {
 }
 
 void EspNowHandler::handleFwBegin(const uint8_t* mac, EspNowMessage* msg) {
-  Serial.println("FW_BEGIN received");
-  if (!eepromConfig || !eepromConfig->isMACAuthorized(mac)) {
-    Serial.println("FW_BEGIN NACK: unauthorized master");
-    sendNack(mac, msg->sequence);
-    return;
-  }
-  if (!extFlash.isPresent()) {
-    Serial.println("FW_BEGIN NACK: external flash not present");
-    sendNack(mac, msg->sequence);
-    return;
-  }
-  if (msg->payloadLength < 2 + 8 + 4 + 4) {
-    Serial.println("FW_BEGIN NACK: invalid payload length");
-    sendNack(mac, msg->sequence);
-    return;
-  }
-  uint8_t *p = msg->payload;
-  fwSessionId = (uint16_t)p[0] | ((uint16_t)p[1] << 8);
-  memcpy(fwVersion, p + 2, 8);
-  fwTotalSize = (uint32_t)p[10] | ((uint32_t)p[11] << 8) | ((uint32_t)p[12] << 16) | ((uint32_t)p[13] << 24);
-  fwCrcExpected = (uint32_t)p[14] | ((uint32_t)p[15] << 8) | ((uint32_t)p[16] << 16) | ((uint32_t)p[17] << 24);
-
-  if (fwTotalSize == 0 || fwTotalSize > (extFlash.sizeBytes() - 0x1000)) {
-    Serial.println("FW_BEGIN NACK: invalid size");
-    sendNack(mac, msg->sequence);
-    return;
-  }
-
-  if (!extFlash.eraseRange(0, 0x1000 + fwTotalSize)) {
-    Serial.println("FW_BEGIN NACK: erase failed");
-    sendNack(mac, msg->sequence);
-    return;
-  }
-
-  FwHeader hdr;
-  memcpy(hdr.magic, "LRFW", 4);
-  memset(hdr.version, 0, sizeof(hdr.version));
-  memcpy(hdr.version, fwVersion, 8);
-  hdr.sizeBytes = fwTotalSize;
-  hdr.crc32 = fwCrcExpected;
-  memset(hdr.sha256, 0, sizeof(hdr.sha256));
-  memset(hdr.reserved, 0, sizeof(hdr.reserved));
-  hdr.headerCrc32 = 0;
-
-  if (!extFlash.writeRange(0, (const uint8_t *)&hdr, sizeof(hdr), true)) {
-    Serial.println("FW_BEGIN NACK: header write failed");
-    sendNack(mac, msg->sequence);
-    return;
-  }
-
-  fwExpectedOffset = 0;
-  fwCrcAccum = crc32_init();
-  fwActive = true;
-  Serial.println("FW_BEGIN OK - waiting for chunks");
-
-  EspNowMessage ack;
-  ack.version = 1;
-  ack.type = MSG_ACK;
-  ack.sequence = msg->sequence;
-  ack.payloadLength = 0;
-  ack.checksum = calculateChecksum(ack);
-  esp_now_peer_info_t peerInfo; memset(&peerInfo, 0, sizeof(peerInfo));
-  memcpy(peerInfo.peer_addr, mac, 6);
-  peerInfo.channel = 1;
-  peerInfo.ifidx = WIFI_IF_STA;
-  peerInfo.encrypt = false;
-  esp_now_add_peer(&peerInfo);
-  esp_now_send(mac, (uint8_t *)&ack, sizeof(EspNowMessage));
-  esp_now_del_peer(mac);
+  Serial.print("FW_BEGIN received - firmware update not supported\n");
+  sendNack(mac, msg->sequence);
+  return;
 }
 
 void EspNowHandler::handleFwChunk(const uint8_t* mac, EspNowMessage* msg) {
+  Serial.print("FW_CHUNK received - firmware update not supported\n");
+  sendNack(mac, msg->sequence);
+  return;
+  
   if (!fwActive) { sendNack(mac, msg->sequence); return; }
   if (msg->payloadLength < 2 + 4 + 2 + 4) { sendNack(mac, msg->sequence); return; }
   uint8_t *p = msg->payload;
@@ -309,11 +249,12 @@ void EspNowHandler::handleFwChunk(const uint8_t* mac, EspNowMessage* msg) {
   const uint8_t *data = p + 8;
   uint32_t chunkCrc = (uint32_t)p[8 + dataLen] | ((uint32_t)p[9 + dataLen] << 8) | ((uint32_t)p[10 + dataLen] << 16) | ((uint32_t)p[11 + dataLen] << 24);
 
+  Serial.printf("FW_CHUNK: offset=%u dataLen=%u expectedOffset=%u\n", offset, dataLen, fwExpectedOffset);
+
   if (offset != fwExpectedOffset) {
-    // Limiter la fréquence des ACK "resend" pour éviter de saturer la queue
     uint64_t now = millis();
     if (now - lastResendAckTime < 200) {
-      return; // Ignorer si on a déjà envoyé un ACK "resend" récemment
+      return;
     }
     lastResendAckTime = now;
     
@@ -337,13 +278,19 @@ void EspNowHandler::handleFwChunk(const uint8_t* mac, EspNowMessage* msg) {
     peerInfo.encrypt = false;
     esp_err_t addRes = esp_now_add_peer(&peerInfo);
     if (addRes != ESP_OK && addRes != ESP_ERR_ESPNOW_EXIST) {
-      Serial.print("FW_CHUNK add_peer failed: "); Serial.println(esp_err_to_name(addRes));
+      Serial.print("FW_CHUNK add_peer failed: ");
+      Serial.print(esp_err_to_name(addRes));
+      Serial.print("\n");
     }
     esp_err_t sendRes = esp_now_send(mac, (uint8_t *)&ack, sizeof(EspNowMessage));
     if (sendRes != ESP_OK && sendRes != ESP_ERR_ESPNOW_IF) {
-      Serial.print("FW_CHUNK resend ack failed: "); Serial.println(esp_err_to_name(sendRes));
+      Serial.print("FW_CHUNK resend ack failed: ");
+      Serial.print(esp_err_to_name(sendRes));
+      Serial.print("\n");
     } else {
-      Serial.print("FW_ACK resend next="); Serial.println(fwExpectedOffset);
+      Serial.print("FW_ACK resend next=");
+      Serial.print(fwExpectedOffset);
+      Serial.print("\n");
     }
     esp_now_del_peer(mac);
     return;
@@ -352,56 +299,113 @@ void EspNowHandler::handleFwChunk(const uint8_t* mac, EspNowMessage* msg) {
   uint32_t ccrc = crc32_finalize(crc32_update(crc32_init(), data, dataLen));
   if (ccrc != chunkCrc) { sendNack(mac, msg->sequence); return; }
 
-  if (!extFlash.writeRange(0x40 + offset, data, dataLen, false)) { sendNack(mac, msg->sequence); return; }
-  fwCrcAccum = crc32_update(fwCrcAccum, data, dataLen);
-  fwExpectedOffset += dataLen;
-
-  EspNowMessage ack;
-  ack.version = 1;
-  ack.type = MSG_FW_ACK;
-  ack.sequence = msg->sequence;
-  ack.payloadLength = 6;
-  ack.payload[0] = fwSessionId & 0xFF;
-  ack.payload[1] = (fwSessionId >> 8) & 0xFF;
-  ack.payload[2] = fwExpectedOffset & 0xFF;
-  ack.payload[3] = (fwExpectedOffset >> 8) & 0xFF;
-  ack.payload[4] = (fwExpectedOffset >> 16) & 0xFF;
-  ack.payload[5] = (fwExpectedOffset >> 24) & 0xFF;
-  ack.checksum = calculateChecksum(ack);
-  esp_now_peer_info_t peerInfo; memset(&peerInfo, 0, sizeof(peerInfo));
-  memcpy(peerInfo.peer_addr, mac, 6);
-  peerInfo.channel = 1;
-  peerInfo.ifidx = WIFI_IF_STA;
-  peerInfo.encrypt = false;
-  esp_err_t addRes2 = esp_now_add_peer(&peerInfo);
-  if (addRes2 != ESP_OK && addRes2 != ESP_ERR_ESPNOW_EXIST) {
-    Serial.print("FW_CHUNK add_peer failed: "); Serial.println(esp_err_to_name(addRes2));
-  }
-  esp_err_t sendRes2 = esp_now_send(mac, (uint8_t *)&ack, sizeof(EspNowMessage));
-  if (sendRes2 != ESP_OK && sendRes2 != ESP_ERR_ESPNOW_IF) {
-    Serial.print("FW_CHUNK ack send failed: "); Serial.println(esp_err_to_name(sendRes2));
-  } else {
-    Serial.print("FW_ACK next="); Serial.println(fwExpectedOffset);
-  }
-  esp_now_del_peer(mac);
-}
-
-void EspNowHandler::handleFwEnd(const uint8_t* mac, EspNowMessage* msg) {
-  if (!fwActive) { sendNack(mac, msg->sequence); return; }
-  uint32_t finalCrc = crc32_finalize(fwCrcAccum);
-  if (fwExpectedOffset != fwTotalSize || finalCrc != fwCrcExpected) {
-    Serial.print("FW_END mismatch size exp="); Serial.print(fwTotalSize);
-    Serial.print(" got="); Serial.println(fwExpectedOffset);
-    Serial.print("FW_END CRC exp="); Serial.print(fwCrcExpected, HEX);
-    Serial.print(" got="); Serial.println(finalCrc, HEX);
+  if (!fwBuffer) {
     sendNack(mac, msg->sequence);
     return;
   }
 
-  FwHeader hdr;
-  if (!extFlash.readData(0, (uint8_t *)&hdr, sizeof(hdr))) { sendNack(mac, msg->sequence); return; }
-  hdr.headerCrc32 = fw_header_crc(hdr);
-  if (!extFlash.writeRange(0, (const uint8_t *)&hdr, sizeof(hdr), true)) { sendNack(mac, msg->sequence); return; }
+  uint32_t spaceAvailable = FW_BUFFER_SIZE - fwBufferWritePos;
+  if (dataLen > spaceAvailable) {
+    processFwBuffer();
+    spaceAvailable = FW_BUFFER_SIZE - fwBufferWritePos;
+    if (dataLen > spaceAvailable) {
+      sendNack(mac, msg->sequence);
+      return;
+    }
+  }
+  
+  memcpy(fwBuffer + fwBufferWritePos, data, dataLen);
+  fwBufferWritePos += dataLen;
+  fwCrcAccum = crc32_update(fwCrcAccum, data, dataLen);
+  fwExpectedOffset += dataLen;
+
+  uint64_t now = millis();
+  
+  bool shouldAck = false;
+  uint32_t bytesSinceLastAck = fwExpectedOffset - lastAckOffset;
+  
+  if (lastAckOffset == 0) {
+    shouldAck = true;
+  } else if (bytesSinceLastAck >= 352) {
+    shouldAck = true;
+  } else if (now - lastAckTime >= 200 && bytesSinceLastAck > 0) {
+    shouldAck = true;
+  }
+  
+  if (!shouldAck) {
+    Serial.printf("FW_CHUNK offset=%u dataLen=%u fwExpectedOffset=%u lastAckOffset=%u bytesSinceLast=%u shouldAck=false\n", 
+                  msg->payload[2] | (msg->payload[3] << 8) | (msg->payload[4] << 16) | (msg->payload[5] << 24),
+                  dataLen, fwExpectedOffset, lastAckOffset, bytesSinceLastAck);
+  }
+  
+  if (shouldAck) {
+    EspNowMessage ack;
+    ack.version = 1;
+    ack.type = MSG_FW_ACK;
+    ack.sequence = msg->sequence;
+    ack.payloadLength = 6;
+    ack.payload[0] = fwSessionId & 0xFF;
+    ack.payload[1] = (fwSessionId >> 8) & 0xFF;
+    ack.payload[2] = fwExpectedOffset & 0xFF;
+    ack.payload[3] = (fwExpectedOffset >> 8) & 0xFF;
+    ack.payload[4] = (fwExpectedOffset >> 16) & 0xFF;
+    ack.payload[5] = (fwExpectedOffset >> 24) & 0xFF;
+    ack.checksum = calculateChecksum(ack);
+    esp_now_peer_info_t peerInfo; memset(&peerInfo, 0, sizeof(peerInfo));
+    memcpy(peerInfo.peer_addr, mac, 6);
+    peerInfo.channel = 1;
+    peerInfo.ifidx = WIFI_IF_STA;
+    peerInfo.encrypt = false;
+    esp_err_t addRes2 = esp_now_add_peer(&peerInfo);
+    if (addRes2 != ESP_OK && addRes2 != ESP_ERR_ESPNOW_EXIST) {
+      Serial.print("FW_CHUNK add_peer failed: ");
+      Serial.print(esp_err_to_name(addRes2));
+      Serial.print("\n");
+    }
+    esp_err_t sendRes2 = esp_now_send(mac, (uint8_t *)&ack, sizeof(EspNowMessage));
+    if (sendRes2 != ESP_OK && sendRes2 != ESP_ERR_ESPNOW_IF) {
+      Serial.print("FW_CHUNK ack send failed: ");
+      Serial.print(esp_err_to_name(sendRes2));
+      Serial.print("\n");
+    } else {
+      uint32_t ramUsed = fwBufferWritePos - fwBufferFlashPos;
+      uint32_t flashWritten = fwFlashWriteOffset;
+      Serial.printf("FW_ACK next=%u RAM=%u/%u Flash=%u bytesSinceLast=%u\n", fwExpectedOffset, ramUsed, FW_BUFFER_SIZE, flashWritten, bytesSinceLastAck);
+    }
+    esp_now_del_peer(mac);
+    lastAckOffset = fwExpectedOffset;
+    lastAckTime = now;
+  }
+}
+
+void EspNowHandler::processFwBuffer() {
+  return;
+  
+  if (!fwBufferActive || !fwBuffer) return;
+}
+
+void EspNowHandler::handleFwEnd(const uint8_t* mac, EspNowMessage* msg) {
+  Serial.print("FW_END received - firmware update not supported\n");
+  sendNack(mac, msg->sequence);
+  return;
+  
+  if (!fwActive) { sendNack(mac, msg->sequence); return; }
+  
+  processFwBuffer();
+  
+  uint32_t finalCrc = crc32_finalize(fwCrcAccum);
+  if (fwExpectedOffset != fwTotalSize || finalCrc != fwCrcExpected) {
+    Serial.print("FW_END mismatch size exp="); Serial.print(fwTotalSize);
+    Serial.print(" got=");
+    Serial.print(fwExpectedOffset);
+    Serial.print("\n");
+    Serial.print("FW_END CRC exp="); Serial.print(fwCrcExpected, HEX);
+    Serial.print(" got=");
+    Serial.print(finalCrc, HEX);
+    Serial.print("\n");
+    sendNack(mac, msg->sequence);
+    return;
+  }
 
   uint8_t vMaj = (uint8_t)fwVersion[0];
   uint8_t vMin = (uint8_t)fwVersion[2];
@@ -409,6 +413,12 @@ void EspNowHandler::handleFwEnd(const uint8_t* mac, EspNowMessage* msg) {
   if (eepromConfig) eepromConfig->setUpdatePending(vMaj, vMin, vPat);
 
   fwActive = false;
+  fwBufferActive = false;
+  
+  if (fwBuffer) {
+    free(fwBuffer);
+    fwBuffer = nullptr;
+  }
 
   EspNowMessage ack;
   ack.version = 1;
@@ -429,13 +439,17 @@ void EspNowHandler::handleFwEnd(const uint8_t* mac, EspNowMessage* msg) {
   peerInfo.encrypt = false;
   esp_err_t addRes3 = esp_now_add_peer(&peerInfo);
   if (addRes3 != ESP_OK && addRes3 != ESP_ERR_ESPNOW_EXIST) {
-    Serial.print("FW_END add_peer failed: "); Serial.println(esp_err_to_name(addRes3));
+    Serial.print("FW_END add_peer failed: ");
+    Serial.print(esp_err_to_name(addRes3));
+    Serial.print("\n");
   }
   esp_err_t sendRes3 = esp_now_send(mac, (uint8_t *)&ack, sizeof(EspNowMessage));
   if (sendRes3 != ESP_OK && sendRes3 != ESP_ERR_ESPNOW_IF) {
-    Serial.print("FW_END ack send failed: "); Serial.println(esp_err_to_name(sendRes3));
+    Serial.print("FW_END ack send failed: ");
+    Serial.print(esp_err_to_name(sendRes3));
+    Serial.print("\n");
   } else {
-    Serial.println("FW_ACK end sent");
+    Serial.print("FW_ACK end sent\n");
   }
   esp_now_del_peer(mac);
 
@@ -485,29 +499,26 @@ void EspNowHandler::checkTimeout() {
   uint64_t now = millis();
   
   if (currentState != STATE_UNPAIRED && now - lastMasterContact > MASTER_TIMEOUT) {
-    Serial.println("Timeout: Lost contact with Master");
+    Serial.print("Timeout: Lost contact with Master\n");
     currentState = STATE_UNPAIRED;
     lastMasterContact = 0;
   }
 }
 
 void EspNowHandler::handleMasterDiscovery(const uint8_t* mac, EspNowMessage* msg) {
-  // Master broadcast discovery - check if it's from our authorized master
   if (currentState == STATE_UNPAIRED && eepromConfig) {
     uint8_t authMAC[6];
     if (eepromConfig->getAuthorizedMAC(authMAC)) {
       if (memcmp(mac, authMAC, 6) == 0) {
-        // This is from our authorized master - we're now linked!
         currentState = STATE_LINKED;
         lastMasterContact = millis();
-        Serial.println("Detected pairing with authorized master via broadcast");
+        Serial.print("Detected pairing with authorized master via broadcast\n");
         sendStatus();
         return;
       }
     }
   }
   
-  // Master broadcast discovery - just respond with status if unpaired
   if (currentState == STATE_UNPAIRED) {
     // Only log first discovery, then silently respond
     static bool firstDiscovery = true;
@@ -517,7 +528,7 @@ void EspNowHandler::handleMasterDiscovery(const uint8_t* mac, EspNowMessage* msg
         Serial.printf("%02X", mac[i]);
         if (i < 5) Serial.print(":");
       }
-      Serial.println(" - responding to discovery broadcasts");
+      Serial.print(" - responding to discovery broadcasts\n");
       firstDiscovery = false;
     }
     sendStatus();
@@ -530,37 +541,33 @@ void EspNowHandler::handlePairRequest(const uint8_t* mac, EspNowMessage* msg) {
     Serial.printf("%02X", mac[i]);
     if (i < 5) Serial.print(":");
   }
-  Serial.println();
+  Serial.print("\n");
   
-  // Check if MAC is authorized
   bool authorized = true;
   if (eepromConfig) {
     authorized = eepromConfig->isMACAuthorized(mac);
     
     if (!authorized) {
-      Serial.println("PAIR REJECTED: Master MAC not authorized");
+      Serial.print("PAIR REJECTED: Master MAC not authorized\n");
       sendPairResponse(mac, false);
       sendNack(mac, msg->sequence);
       return;
     }
     
-    Serial.println("PAIR ACCEPTED: Master MAC authorized");
+    Serial.print("PAIR ACCEPTED: Master MAC authorized\n");
   } else {
-    Serial.println("PAIR ACCEPTED: No EEPROM config - allowing any master");
+    Serial.print("PAIR ACCEPTED: No EEPROM config - allowing any master\n");
   }
   
-  // Accept pairing
   if (currentState == STATE_UNPAIRED) {
     currentState = STATE_LINKED;
     lastMasterContact = millis();
-    
-    // Store authorized MAC if not already set
     if (eepromConfig && authorized) {
       uint8_t currentMAC[6];
       if (!eepromConfig->getAuthorizedMAC(currentMAC)) {
         // No MAC set yet, store this one
         eepromConfig->setAuthorizedMAC(mac);
-        Serial.println("Stored Master MAC in EEPROM");
+        Serial.print("Stored Master MAC in EEPROM\n");
       }
     }
   }
@@ -575,20 +582,18 @@ void EspNowHandler::handleUnpair(const uint8_t* mac, EspNowMessage* msg) {
     Serial.printf("%02X", mac[i]);
     if (i < 5) Serial.print(":");
   }
-  Serial.println();
-  
-  // Clear authorized MAC from EEPROM
+  Serial.print("\n");
+
   if (eepromConfig) {
     eepromConfig->clearAuthorizedMAC();
-    Serial.println("Cleared authorized Master MAC from EEPROM");
+    Serial.print("Cleared authorized Master MAC from EEPROM\n");
   }
-  
-  // Change state to unpaired
+
   currentState = STATE_UNPAIRED;
   lastMasterContact = 0;
   
   sendAck(mac, msg->sequence);
-  Serial.println("Unpaired successfully");
+  Serial.print("Unpaired successfully\n");
 }
 
 void EspNowHandler::handlePingRequest(const uint8_t* mac, EspNowMessage* msg) {
@@ -608,14 +613,16 @@ void EspNowHandler::handlePingRequest(const uint8_t* mac, EspNowMessage* msg) {
   esp_err_t addResult = esp_now_add_peer(&peerInfo);
   if (addResult != ESP_OK && addResult != ESP_ERR_ESPNOW_EXIST) {
     Serial.print("ERROR: Failed to add peer for ping response: ");
-    Serial.println(esp_err_to_name(addResult));
+    Serial.print(esp_err_to_name(addResult));
+    Serial.print("\n");
     return;
   }
   
   esp_err_t result = esp_now_send(mac, (uint8_t *)&response, sizeof(EspNowMessage));
   if (result != ESP_OK && result != ESP_ERR_ESPNOW_IF) {
     Serial.print("ERROR: Failed to send PING response: ");
-    Serial.println(esp_err_to_name(result));
+    Serial.print(esp_err_to_name(result));
+    Serial.print("\n");
   }
   
   esp_now_del_peer(mac);
@@ -627,19 +634,20 @@ void EspNowHandler::handleCommand(const uint8_t* mac, EspNowMessage* msg) {
   cmd.trim();
   
   Serial.print("COMMAND received: ");
-  Serial.println(cmd);
+  Serial.print(cmd);
+  Serial.print("\n");
   
   commandReceived = true;
   
   if (currentState == STATE_LINKED || currentState == STATE_DISCOVERED) {
-    Serial.println("Processing command...");
+    Serial.print("Processing command...\n");
     
     if (cmd == "LED_ON") {
-      Serial.println("LED ON executed");
+      Serial.print("LED ON executed\n");
     } else if (cmd == "LED_OFF") {
-      Serial.println("LED OFF executed");
+      Serial.print("LED OFF executed\n");
     } else if (cmd == "STATUS") {
-      Serial.println("Status requested");
+      Serial.print("Status requested\n");
     }
   }
   
@@ -656,21 +664,19 @@ void EspNowHandler::onDataReceive(const esp_now_recv_info_t *info, const uint8_t
   EspNowMessage* msg = (EspNowMessage*)data;
   
   if (msg->checksum != calculateChecksum(*msg)) {
-    Serial.println("ERROR: Invalid checksum");
+    Serial.print("ERROR: Invalid checksum\n");
     return;
   }
   
   instance->lastMasterContact = millis();
   instance->lastSequence = msg->sequence;
   
-  // If we receive any message from an authorized master and we're unpaired, consider ourselves linked
   if (instance->currentState == STATE_UNPAIRED && instance->eepromConfig) {
     uint8_t authMAC[6];
     if (instance->eepromConfig->getAuthorizedMAC(authMAC)) {
       if (memcmp(mac_addr, authMAC, 6) == 0) {
-        // We received a message from our authorized master - we're now linked
         instance->currentState = STATE_LINKED;
-        Serial.println("Detected pairing with authorized master");
+        Serial.print("Detected pairing with authorized master\n");
       }
     }
   }
@@ -702,7 +708,8 @@ void EspNowHandler::onDataReceive(const esp_now_recv_info_t *info, const uint8_t
       break;
     default:
       Serial.print("WARNING: Unknown message type: ");
-      Serial.println(msg->type);
+      Serial.print(msg->type);
+      Serial.print("\n");
       break;
   }
 }
@@ -711,7 +718,7 @@ void EspNowHandler::onDataSent(const esp_now_send_info_t *info, esp_now_send_sta
   if (!instance) return;
   
   if (status != ESP_NOW_SEND_SUCCESS) {
-    Serial.println("ERROR: Message send failed");
+    Serial.print("ERROR: Message send failed\n");
     instance->retryCount++;
   } else {
     instance->retryCount = 0;
