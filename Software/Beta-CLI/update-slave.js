@@ -18,8 +18,8 @@ async function main() {
     const sessionId = parseInt(sessionIdStr, 10);
     const fw = fs.readFileSync(fwPath);
 
-    console.log(`Opening serial port ${portPath} at 115200 baud...`);
-    const port = new SerialPort({ path: portPath, baudRate: 115200, autoOpen: true });
+    console.log(`Opening serial port ${portPath} at 921600 baud...`);
+    const port = new SerialPort({ path: portPath, baudRate: 921600, autoOpen: true });
     await new Promise(resolve => {
         port.once('open', () => {
             console.log(`Serial port ${portPath} opened successfully`);
@@ -81,17 +81,47 @@ async function main() {
 
     await new Promise((resolve, reject) => {
         let offset = 0;
-        const CHUNK = 1024;
+        const BLOCK_SIZE = 64736;
+        const TARGET_BITRATE_KBPS = 750;
+        const BYTES_PER_SECOND = (TARGET_BITRATE_KBPS * 1000) / 8;
+        const THEORETICAL_DELAY = Math.round((BLOCK_SIZE / BYTES_PER_SECOND) * 1000);
+        const DELAY_BETWEEN_BLOCKS = Math.max(200, THEORETICAL_DELAY + 100);
+
         function pump() {
-            while (offset < fw.length) {
-                const slice = fw.subarray(offset, Math.min(offset + CHUNK, fw.length));
-                const ok = port.write(slice);
-                offset += slice.length;
-                if (!ok) { port.once('drain', pump); return; }
+            if (offset >= fw.length) {
+                port.drain(() => {
+                    resolve();
+                });
+                return;
             }
-            port.drain(() => {
-                resolve();
-            });
+
+            const slice = fw.subarray(offset, Math.min(offset + BLOCK_SIZE, fw.length));
+            const ok = port.write(slice);
+            offset += slice.length;
+
+            if (offset % 100000 < slice.length || offset >= fw.length) {
+                console.log(`Sent ${offset}/${fw.length} bytes (${Math.round(offset * 100 / fw.length)}%)`);
+            }
+
+            if (!ok) {
+                port.once('drain', () => {
+                    port.drain(() => {
+                        if (offset >= fw.length) {
+                            resolve();
+                        } else {
+                            setTimeout(pump, DELAY_BETWEEN_BLOCKS);
+                        }
+                    });
+                });
+            } else {
+                port.drain(() => {
+                    if (offset >= fw.length) {
+                        resolve();
+                    } else {
+                        setTimeout(pump, DELAY_BETWEEN_BLOCKS);
+                    }
+                });
+            }
         }
         pump();
     });
