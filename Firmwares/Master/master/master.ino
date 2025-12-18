@@ -31,5 +31,5 @@ void loop() {
   slaveManager.update();
   espnowHandler.update();
   
-  delay(10);
+  delay(1);
 }

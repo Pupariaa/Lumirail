@@ -403,9 +403,13 @@ void EspNowHandler::onDataReceive(const esp_now_recv_info_t *info, const uint8_t
       {
         uint16_t sid = (uint16_t)(msg->payload[0] | (msg->payload[1] << 8));
         uint32_t off = (uint32_t)msg->payload[2] | ((uint32_t)msg->payload[3] << 8) | ((uint32_t)msg->payload[4] << 16) | ((uint32_t)msg->payload[5] << 24);
-        Serial.printf("FW_ACK session=%u nextOffset=%u\n", sid, off);
         if (espnowHandler.fwActive && memcmp(mac_addr, espnowHandler.getFwTargetMac(), 6) == 0) {
           espnowHandler.setLastFwAckOffset(off);
+          static uint32_t lastLoggedAck = 0;
+          if (off - lastLoggedAck >= 10000 || off == 0) {
+            Serial.printf("FW_ACK session=%u nextOffset=%u\n", sid, off);
+            lastLoggedAck = off;
+          }
         }
       }
       break;

@@ -12,18 +12,26 @@ static int g_fw_target = 0;
 
 SerialCommands serialCommands;
 static bool g_fwPushActive = false;
+static uint32_t g_chunksSinceAck = 0;
 
 SerialCommands::SerialCommands() {}
 
 void SerialCommands::init() {
-  Serial.begin(115200);
+  Serial.begin(921600);
   delay(1000);
   Serial.println("LumiRail Master - Starting...");
 }
 
 void SerialCommands::process() {
-  if (g_fwPushActive) return;
+  if (g_fwPushActive) {
+    while (Serial.available() > 0) {
+      Serial.read();
+    }
+    return;
+  }
   if (!Serial.available()) return;
+  
+  if (g_fwPushActive) return;
   
   String cmd = Serial.readStringUntil('\n');
   cmd.trim();
@@ -31,8 +39,17 @@ void SerialCommands::process() {
 }
 
 void SerialCommands::handleCommand(const String& cmd) {
-  if (g_fwPushActive) return;
   if (cmd.length() == 0) return;
+  
+  bool isBinary = false;
+  for (unsigned int i = 0; i < cmd.length(); i++) {
+    char c = cmd.charAt(i);
+    if (c < 32 && c != '\n' && c != '\r' && c != '\t') {
+      isBinary = true;
+      break;
+    }
+  }
+  if (isBinary) return;
   
   Serial.printf("DEBUG: Received command: [%s]\n", cmd.c_str());
   
@@ -146,6 +163,7 @@ void SerialCommands::handleCommand(const String& cmd) {
       espnowHandler.setFwTargetMac(slaveManager.getSlaves()[id].mac);
       espnowHandler.setFwActive(true);
       espnowHandler.setLastFwAckOffset(0);
+      g_chunksSinceAck = 0;
       if (!espnowHandler.addFwTargetPeer()) {
         Serial.println("ERROR: Failed to add FW target peer");
         espnowHandler.setFwActive(false);
@@ -160,12 +178,6 @@ void SerialCommands::handleCommand(const String& cmd) {
       delay(4000); // Attendre que le Slave traite FW_BEGIN (effacement flash, header, etc.)
       Serial.println("FWPUSH READY - waiting for chunks");
       
-      // Vider le buffer série avant de lire le binaire
-      while (Serial.available() > 0) {
-        Serial.read();
-      }
-      delay(100);
-      
       uint32_t offset = 0;
       uint8_t buf[188];
       const uint32_t CHUNK_SIZE = 188 - 12;
@@ -173,8 +185,21 @@ void SerialCommands::handleCommand(const String& cmd) {
       while (offset < sizeBytes) {
         uint32_t toRead = (sizeBytes - offset > CHUNK_SIZE) ? CHUNK_SIZE : (sizeBytes - offset);
         uint32_t availableBefore = Serial.available();
-        int n = Serial.readBytes((char*)buf, toRead);
-        if (n <= 0) { 
+        
+        uint32_t bytesRead = 0;
+        uint32_t readStart = millis();
+        while (bytesRead < toRead && (millis() - readStart) < 5000) {
+          int available = Serial.available();
+          if (available > 0) {
+            int toReadNow = (toRead - bytesRead < (uint32_t)available) ? (toRead - bytesRead) : available;
+            int n = Serial.readBytes((char*)buf + bytesRead, toReadNow);
+            bytesRead += n;
+          } else {
+            delay(10);
+          }
+        }
+        
+        if (bytesRead == 0) { 
           Serial.printf("ERROR: Serial read timeout at offset %u (available before: %u)\n", offset, availableBefore); 
           espnowHandler.removeFwTargetPeer();
           espnowHandler.setFwActive(false);
@@ -182,24 +207,23 @@ void SerialCommands::handleCommand(const String& cmd) {
           g_fwPushActive = false; 
           return; 
         }
-        if ((uint32_t)n != toRead) { 
-          Serial.printf("ERROR: Serial read incomplete at offset %u: got %d expected %u (available before: %u)\n", offset, n, toRead, availableBefore); 
+        if (bytesRead != toRead) { 
+          Serial.printf("ERROR: Serial read incomplete at offset %u: got %u expected %u (available before: %u)\n", offset, bytesRead, toRead, availableBefore); 
           espnowHandler.removeFwTargetPeer();
           espnowHandler.setFwActive(false);
           espnowHandler.setFwTargetMac(nullptr);
           g_fwPushActive = false; 
           return; 
         }
+        uint32_t n = bytesRead;
         uint32_t chunkCrc = crc32_finalize(crc32_update(crc32_init(), buf, n));
         bool sent = false;
         for (int retry = 0; retry < 10 && !sent; retry++) {
           if (retry > 0) {
-            // Délai progressif pour ESP_ERR_ESPNOW_NO_MEM
             delay(retry * 10);
           }
           sent = espnowHandler.sendFwChunk(slaveManager.getSlaves()[id].mac, sessionId, offset, buf, n, chunkCrc);
           if (!sent && retry < 9) {
-            // Si erreur NO_MEM, attendre un peu plus pour laisser la queue se vider
             delay(20);
           }
         }
@@ -213,21 +237,22 @@ void SerialCommands::handleCommand(const String& cmd) {
         }
         offset += n;
         
-        // Attendre un peu pour laisser le Slave traiter et envoyer l'ACK
-        delay(50);
+        g_chunksSinceAck++;
         
-        // Attendre l'ACK avant d'envoyer le chunk suivant
-        uint32_t currentAck = espnowHandler.getLastFwAckOffset();
-        Serial.printf("Waiting for ACK: current=%u expected=%u\n", currentAck, offset);
-        if (!espnowHandler.waitForFwAck(offset, 3000)) {
-          Serial.printf("ERROR: Timeout waiting for FW_ACK at offset %u (last received: %u)\n", offset, espnowHandler.getLastFwAckOffset());
-          espnowHandler.removeFwTargetPeer();
-          espnowHandler.setFwActive(false);
-          espnowHandler.setFwTargetMac(nullptr);
-          g_fwPushActive = false;
-          return;
+        if (g_chunksSinceAck >= 2 || offset == sizeBytes) {
+          uint32_t currentAck = espnowHandler.getLastFwAckOffset();
+          Serial.printf("Waiting for ACK: current=%u expected=%u\n", currentAck, offset);
+          if (!espnowHandler.waitForFwAck(offset, 10000)) {
+            Serial.printf("ERROR: Timeout waiting for FW_ACK at offset %u (last received: %u)\n", offset, espnowHandler.getLastFwAckOffset());
+            espnowHandler.removeFwTargetPeer();
+            espnowHandler.setFwActive(false);
+            espnowHandler.setFwTargetMac(nullptr);
+            g_fwPushActive = false;
+            return;
+          }
+          Serial.printf("ACK received: %u\n", espnowHandler.getLastFwAckOffset());
+          g_chunksSinceAck = 0;
         }
-        Serial.printf("ACK received: %u\n", espnowHandler.getLastFwAckOffset());
         
         if (offset % 10000 < n || offset == sizeBytes) {
           Serial.printf("Progress: %u/%u bytes (%.1f%%)\n", offset, sizeBytes, (float)offset * 100.0 / sizeBytes);
