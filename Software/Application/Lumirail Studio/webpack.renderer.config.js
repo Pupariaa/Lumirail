@@ -1,8 +1,9 @@
 const path = require('path');
+const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
-  target: 'electron-renderer',
+  target: 'web',
   entry: './src/renderer/index.tsx',
   output: {
     path: path.resolve(__dirname, 'dist/renderer'),
@@ -28,10 +29,14 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: './src/renderer/index.html',
     }),
+    new webpack.ProvidePlugin({
+      process: 'process/browser',
+    }),
   ],
   devServer: {
     port: 9000,
     hot: true,
   },
+  node: false,
 };
 
