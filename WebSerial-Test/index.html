@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumirail Studio</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 16px;
+            background: #f8f9fa;
+            color: #333;
+        }
+        h1 { margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #1a1a1a; }
+        .card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .card h3 {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+        button {
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            background: #fff;
+            color: #333;
+            transition: all 0.15s;
+        }
+        button:hover:not(:disabled) { background: #f0f0f0; border-color: #bbb; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+        button.primary:hover:not(:disabled) { background: #1d4ed8; }
+        input[type="text"] {
+            padding: 8px 12px;
+            font-size: 13px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            width: 160px;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 20px;
+            background: #f3f4f6;
+        }
+        .status-badge.connected { background: #dcfce7; color: #166534; }
+        .status-badge.disconnected { background: #fee2e2; color: #991b1b; }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .board-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 8px;
+        }
+        .board-item {
+            padding: 8px 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        .board-item .label { color: #666; font-size: 11px; margin-bottom: 2px; }
+        .board-item .value { font-weight: 600; color: #1a1a1a; }
+        .board-section { margin-bottom: 16px; }
+        .board-section:last-child { margin-bottom: 0; }
+        .board-section h4 { margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: 0.5px; }
+        .console {
+            background: #1e1e1e;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 11px;
+            height: 120px;
+            overflow-y: auto;
+            color: #d4d4d4;
+        }
+        .console p { margin: 0; padding: 2px 0; line-height: 1.4; }
+        .console .tx { color: #6b9fff; }
+        .console .rx { color: #98c379; }
+        .console .info { color: #e5c07b; }
+        .console .err { color: #e06c75; }
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .console-header h3 { margin: 0; }
+        .progress-bar {
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            background: #2563eb;
+            border-radius: 3px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+        .scene-status { font-size: 12px; color: #666; margin-top: 6px; }
+        .module-status {
+            font-size: 13px;
+            color: #666;
+            margin-left: auto;
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+
+<body>
+    <h1>Lumirail Studio</h1>
+
+    <div class="card">
+        <div class="toolbar">
+            <button id="connectBtn" class="primary">Connect</button>
+            <button id="disconnectBtn" disabled>Disconnect</button>
+            <button id="pingBtn" disabled>Ping</button>
+            <button id="checkModuleBtn" disabled>Check Module</button>
+            <input type="text" id="sendInput" placeholder="Command..." disabled>
+            <button id="sendBtn" disabled>Send</button>
+            <span id="status" class="status-badge disconnected">
+                <span class="status-dot"></span>
+                <span id="statusText">Disconnected</span>
+            </span>
+            <span id="moduleStatus" class="module-status"></span>
+        </div>
+    </div>
+
+    <div id="boardPanel" class="card hidden">
+        <h3>Module Information</h3>
+        <div class="board-section">
+            <h4>Board</h4>
+            <div id="boardInfo" class="board-grid"></div>
+        </div>
+        <div class="board-section">
+            <h4>Config</h4>
+            <div id="configInfo" class="board-grid"></div>
+        </div>
+        <div class="board-section">
+            <h4>Scene 1 Metadata</h4>
+            <div id="s1MetaInfo" class="board-grid"></div>
+        </div>
+        <div class="board-section">
+            <h4>Scene 2 Metadata</h4>
+            <div id="s2MetaInfo" class="board-grid"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Scene Upload</h3>
+        <div class="toolbar" style="flex-wrap: wrap;">
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 13px;">
+                <input type="radio" name="sceneSlot" value="1" id="sceneSlot1" checked>
+                Scene 1
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 13px;">
+                <input type="radio" name="sceneSlot" value="2" id="sceneSlot2">
+                Scene 2
+            </label>
+            <input type="file" id="sceneFile" accept=".bin" disabled style="font-size: 12px;">
+            <button id="uploadSceneBtn" disabled>Upload Scene</button>
+        </div>
+        <div id="sceneProgress" class="hidden">
+            <div class="progress-bar"><div id="sceneProgressBar" class="fill"></div></div>
+            <div id="sceneProgressText" class="scene-status"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Config</h3>
+        <div class="board-section">
+            <h4>Active Scene</h4>
+            <div class="toolbar">
+                <button id="setActive1Btn" disabled>Scene 1</button>
+                <button id="setActive2Btn" disabled>Scene 2</button>
+            </div>
+        </div>
+        <div class="board-section">
+            <h4>SOP (Start on Power)</h4>
+            <div class="toolbar">
+                <button id="setSop0Btn" disabled>0</button>
+                <button id="setSop1Btn" disabled>1</button>
+            </div>
+        </div>
+        <div class="board-section">
+            <h4>SOT (Start on Trigger)</h4>
+            <div class="toolbar">
+                <button id="setSot0Btn" disabled>0</button>
+                <button id="setSot1Btn" disabled>1</button>
+            </div>
+        </div>
+        <span id="configStatus" style="font-size: 12px; color: #666;"></span>
+    </div>
+
+    <div class="card">
+        <div class="console-header">
+            <h3>Console</h3>
+            <button id="clearConsoleBtn" style="padding: 4px 10px; font-size: 11px;">Clear</button>
+        </div>
+        <div id="console" class="console"></div>
+    </div>
+
+    <script>
+        let port = null;
+        let reader = null;
+        let messageBuffer = '';
+        let moduleSN = null;
+        let modulePresent = false;
+        let digiKeyVerified = false;
+        let sceneUploadResolve = null;
+        let boardData = {};
+        let configData = {};
+        let s1Meta = {};
+        let s2Meta = {};
+        const CHECK_MODULE_RUNS = 3;
+        let checkModuleState = 'idle';
+        let checkModuleBuffer = [];
+        let checkModuleRunTarget = 0;
+        let checkModuleCollectedBoard = [];
+        let checkModuleCollectedConfig = [];
+        let checkModuleCollectedS1Meta = [];
+        let checkModuleCollectedS2Meta = [];
+        let sceneReadyReceived = false;
+        let sceneSizeAckReceived = false;
+        let sceneVerifyTimeoutId = null;
+        let sceneHashReadResolve = null;
+        let sceneHashReadTimeoutId = null;
+        let sceneDownloadState = false;
+        let sceneDownloadLines = [];
+        let sceneDownloadResolve = null;
+        let sceneDoneResolve = null;
+        let sceneMetaSetResolve = null;
+        let lastSetConfigKey = null;
+        let lastSetConfigValue = null;
+        let presencePingIntervalId = null;
+        let taskInProgress = false;
+        let lastPongMs = 0;
+        let needConfigOnNextPong = true;
+        const PRESENCE_PING_MS = 1000;
+        const MODULE_DISCONNECT_MS = 3000;
+
+        const $ = id => document.getElementById(id);
+        const connectBtn = $('connectBtn');
+        const disconnectBtn = $('disconnectBtn');
+        const pingBtn = $('pingBtn');
+        const sendBtn = $('sendBtn');
+        const sendInput = $('sendInput');
+        const status = $('status');
+        const statusText = $('statusText');
+        const consoleDiv = $('console');
+        const moduleStatusEl = $('moduleStatus');
+        const checkModuleBtn = $('checkModuleBtn');
+        const sceneFileInput = $('sceneFile');
+        const uploadSceneBtn = $('uploadSceneBtn');
+        const sceneProgress = $('sceneProgress');
+        const sceneProgressBar = $('sceneProgressBar');
+        const sceneProgressText = $('sceneProgressText');
+        const boardPanel = $('boardPanel');
+        const boardInfo = $('boardInfo');
+        const configInfo = $('configInfo');
+        const s1MetaInfo = $('s1MetaInfo');
+        const s2MetaInfo = $('s2MetaInfo');
+        const clearConsoleBtn = $('clearConsoleBtn');
+        const sceneSlot1 = $('sceneSlot1');
+        const sceneSlot2 = $('sceneSlot2');
+        const setActive1Btn = $('setActive1Btn');
+        const setActive2Btn = $('setActive2Btn');
+        const setSop0Btn = $('setSop0Btn');
+        const setSop1Btn = $('setSop1Btn');
+        const setSot0Btn = $('setSot0Btn');
+        const setSot1Btn = $('setSot1Btn');
+        const configStatus = $('configStatus');
+
+        const boardLabels = {
+            'MODEL': 'Model', 'SN': 'Serial Number', 'REV': 'Revision',
+            'BUILDDATE': 'Build Date', 'DRIVER': 'LED Driver', 'CORE': 'MCU',
+            'FSUSER': 'Storage', 'FREQ': 'Frequency', 'CHP': 'On/Off CH', 'CHPWM': 'PWM CH'
+        };
+        const configLabels = { 'scene_active': 'Active Scene', 'SOP': 'Start on Power', 'SOT': 'Start on Trigger' };
+        const metaLabels = { 'HASH': 'Hash', 'SIZE': 'Size', 'delay': 'Delay', 'loop': 'Loop' };
+
+        function parseKeyValueLines(lines) {
+            const out = {};
+            for (const line of lines) {
+                const idx = line.indexOf(':');
+                if (idx <= 0) continue;
+                let key = line.substring(0, idx).trim();
+                let value = line.substring(idx + 1).trim().replace(/;\s*$/, '');
+                if (!key) continue;
+                if (value.length > (out[key] || '').length) out[key] = value;
+            }
+            return out;
+        }
+
+        function renderGrid(container, data, labels, order) {
+            container.innerHTML = '';
+            const seen = new Set();
+            for (const key of order) {
+                if (data[key] === undefined) continue;
+                seen.add(key);
+                const div = document.createElement('div');
+                div.className = 'board-item';
+                let v = String(data[key]);
+                if (key === 'FSUSER') v = (parseInt(v) / 1024).toFixed(0) + ' KB';
+                if (key === 'FREQ') v += ' MHz';
+                if (key === 'delay') v += ' ms';
+                if (key === 'SIZE') v += ' B';
+                div.innerHTML = '<div class="label">' + (labels[key] || key) + '</div><div class="value">' + v + '</div>';
+                container.appendChild(div);
+            }
+            for (const key of Object.keys(data)) {
+                if (seen.has(key)) continue;
+                const div = document.createElement('div');
+                div.className = 'board-item';
+                let v = String(data[key]);
+                if (key === 'delay') v += ' ms';
+                if (key === 'SIZE') v += ' B';
+                div.innerHTML = '<div class="label">' + (labels[key] || key) + '</div><div class="value">' + v + '</div>';
+                container.appendChild(div);
+            }
+        }
+
+        function dominantMerge(collected) {
+            const result = {};
+            const keys = new Set();
+            for (const obj of collected)
+                for (const k of Object.keys(obj)) keys.add(k);
+            for (const key of keys) {
+                const counts = {};
+                for (const obj of collected) {
+                    const v = obj[key];
+                    if (v !== undefined && v !== '') {
+                        const s = String(v);
+                        counts[s] = (counts[s] || 0) + 1;
+                    }
+                }
+                let best = undefined;
+                let bestCount = 0;
+                for (const [v, c] of Object.entries(counts)) {
+                    if (c > bestCount) { bestCount = c; best = v; }
+                }
+                if (best !== undefined) result[key] = best;
+            }
+            return result;
+        }
+
+        function displayModuleInfo() {
+            renderGrid(boardInfo, boardData, boardLabels, ['MODEL', 'SN', 'REV', 'BUILDDATE', 'CORE', 'DRIVER', 'FREQ', 'FSUSER', 'CHP', 'CHPWM']);
+            renderGrid(configInfo, configData, configLabels, ['scene_active', 'SOP', 'SOT']);
+            renderGrid(s1MetaInfo, s1Meta, metaLabels, ['HASH', 'SIZE', 'delay', 'loop']);
+            renderGrid(s2MetaInfo, s2Meta, metaLabels, ['HASH', 'SIZE', 'delay', 'loop']);
+            boardPanel.classList.remove('hidden');
+            if (boardData['SN']) {
+                moduleSN = boardData['SN'];
+                modulePresent = true;
+                moduleStatusEl.textContent = moduleSN;
+            }
+            const active = configData['scene_active'];
+            configStatus.textContent = active !== undefined ? 'Active: Scene ' + active : '';
+        }
+
+        function log(text, type = '') {
+            const p = document.createElement('p');
+            if (type) p.className = type;
+            const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            p.textContent = time + ' ' + text;
+            consoleDiv.appendChild(p);
+            while (consoleDiv.children.length > 200) consoleDiv.removeChild(consoleDiv.firstChild);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        clearConsoleBtn.addEventListener('click', () => { consoleDiv.innerHTML = ''; });
+
+        async function sendMessage(message, showInLog = true) {
+            if (!port || !port.writable) return;
+            try {
+                const writer = port.writable.getWriter();
+                const data = new TextEncoder().encode(message + '\n');
+                await writer.write(data);
+                await writer.ready;
+                writer.releaseLock();
+                if (showInLog) log('TX: ' + message, 'tx');
+            } catch (error) {
+                log('Send error: ' + error.message, 'err');
+                throw error;
+            }
+        }
+
+        async function sendBinary(data) {
+            if (!port || !port.writable) return;
+            const writer = port.writable.getWriter();
+            await writer.write(data);
+            await writer.ready;
+            writer.releaseLock();
+        }
+
+        function bytesToHex(bytes) {
+            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function sha256ArrayBuffer(buffer) {
+            return new Uint8Array(await crypto.subtle.digest('SHA-256', buffer));
+        }
+
+        let crc32Table = null;
+        function crc32BuildTable() {
+            const t = new Uint32Array(256);
+            for (let i = 0; i < 256; i++) {
+                let c = i;
+                for (let j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+                t[i] = c;
+            }
+            return t;
+        }
+        function crc32Update(crc, bytes) {
+            if (!crc32Table) crc32Table = crc32BuildTable();
+            for (let i = 0; i < bytes.length; i++)
+                crc = crc32Table[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+            return crc;
+        }
+        function crc32BytesHex(bytes) {
+            let c = crc32Update(0xffffffff, bytes) ^ 0xffffffff;
+            return (c >>> 0).toString(16).padStart(8, '0');
+        }
+        function crc32Hex(str) {
+            const enc = new TextEncoder().encode(str);
+            let c = crc32Update(0xffffffff, enc) ^ 0xffffffff;
+            return (c >>> 0).toString(16).padStart(8, '0');
+        }
+
+        function parseEndWithCrcHash(line, prefix) {
+            if (!line.startsWith(prefix + ':') || line.length < prefix.length + 1 + 8 + 1 + 64) return null;
+            const rest = line.slice(prefix.length + 1);
+            const sep = rest.indexOf(':');
+            if (sep !== 8) return null;
+            const crc = rest.slice(0, 8);
+            const hash = rest.slice(9, 9 + 64);
+            if (!/^[0-9a-fA-F]{8}$/.test(crc) || !/^[0-9a-fA-F]{64}$/.test(hash)) return null;
+            return { crc: crc.toLowerCase(), hash: hash.toLowerCase() };
+        }
+
+        async function verifyFramePayload(payload, crcHex, hashHex) {
+            const enc = new TextEncoder().encode(payload);
+            const crcGot = crc32Hex(payload);
+            const hashBuf = await crypto.subtle.digest('SHA-256', enc);
+            const hashGot = bytesToHex(new Uint8Array(hashBuf)).toLowerCase();
+            const crcOk = crcGot === crcHex.toLowerCase();
+            const hashOk = hashGot === hashHex.toLowerCase();
+            if (crcOk && hashOk) return { ok: true };
+            return { ok: false, crcOk, hashOk, crcGot, hashGot };
+        }
+
+        const SCENE_READY_TIMEOUT_MS = 5000;
+        const SCENE_SIZE_ACK_TIMEOUT_MS = 5000;
+        const SCENE_VERIFY_TIMEOUT_MS = 45000;
+        const CHUNK = 64;
+
+        function waitForSceneResult(timeoutMs) {
+            return new Promise((resolve, reject) => {
+                if (sceneVerifyTimeoutId) clearTimeout(sceneVerifyTimeoutId);
+                sceneVerifyTimeoutId = setTimeout(() => {
+                    sceneVerifyTimeoutId = null;
+                    if (sceneUploadResolve) { sceneUploadResolve = null; reject(new Error('timeout')); }
+                }, timeoutMs);
+                sceneUploadResolve = (result) => {
+                    if (sceneVerifyTimeoutId) { clearTimeout(sceneVerifyTimeoutId); sceneVerifyTimeoutId = null; }
+                    sceneUploadResolve = null;
+                    resolve(result);
+                };
+            });
+        }
+
+        function waitForSceneHashRead(timeoutMs) {
+            return new Promise((resolve, reject) => {
+                if (sceneHashReadTimeoutId) clearTimeout(sceneHashReadTimeoutId);
+                sceneHashReadTimeoutId = setTimeout(() => {
+                    sceneHashReadTimeoutId = null;
+                    if (sceneHashReadResolve) { sceneHashReadResolve = null; reject(new Error('timeout')); }
+                }, timeoutMs);
+                sceneHashReadResolve = (payload) => {
+                    if (sceneHashReadTimeoutId) { clearTimeout(sceneHashReadTimeoutId); sceneHashReadTimeoutId = null; }
+                    sceneHashReadResolve = null;
+                    resolve(payload);
+                };
+            });
+        }
+
+        function waitForSceneDownload(timeoutMs) {
+            return new Promise((resolve, reject) => {
+                const t = setTimeout(() => {
+                    if (sceneDownloadResolve) {
+                        sceneDownloadResolve = null;
+                        sceneDownloadState = false;
+                        sceneDownloadLines = [];
+                        reject(new Error('timeout'));
+                    }
+                }, timeoutMs);
+                sceneDownloadResolve = (bytes) => {
+                    clearTimeout(t);
+                    sceneDownloadResolve = null;
+                    sceneDownloadState = false;
+                    sceneDownloadLines = [];
+                    resolve(bytes);
+                };
+            });
+        }
+
+        function waitForSceneDone(timeoutMs) {
+            return new Promise((resolve, reject) => {
+                const t = setTimeout(() => {
+                    if (sceneDoneResolve) {
+                        sceneDoneResolve = null;
+                        reject(new Error('SCENE_DONE timeout'));
+                    }
+                }, timeoutMs);
+                sceneDoneResolve = () => {
+                    clearTimeout(t);
+                    sceneDoneResolve = null;
+                    resolve();
+                };
+            });
+        }
+
+        function waitForSceneMetaSet(timeoutMs) {
+            return new Promise((resolve) => {
+                const t = setTimeout(() => {
+                    if (sceneMetaSetResolve) {
+                        sceneMetaSetResolve = null;
+                        resolve(false);
+                    }
+                }, timeoutMs);
+                sceneMetaSetResolve = (ok) => {
+                    clearTimeout(t);
+                    sceneMetaSetResolve = null;
+                    resolve(ok);
+                };
+            });
+        }
+
+        function hexLineToBytes(hexLine) {
+            const out = new Uint8Array(hexLine.length / 2);
+            for (let i = 0; i < out.length; i++)
+                out[i] = parseInt(hexLine.substr(i * 2, 2), 16);
+            return out;
+        }
+
+        async function uploadScene() {
+            if (!port || !port.writable) { log('Port not available', 'err'); return; }
+            const file = sceneFileInput.files[0];
+            if (!file) { log('No file selected', 'err'); return; }
+            const slot = sceneSlot2.checked ? 2 : 1;
+            taskInProgress = true;
+            try {
+                sceneProgress.classList.remove('hidden');
+                sceneProgressBar.style.width = '0%';
+                sceneProgressText.textContent = 'Ping...';
+                await sendMessage('PING', false);
+                await new Promise(r => setTimeout(r, 400));
+                sceneProgressText.textContent = 'Check config...';
+                await sendMessage('GETCONFIG', false);
+                await new Promise(r => setTimeout(r, 400));
+                sceneProgressText.textContent = 'Uploading...';
+                await sendMessage('SCENE_SLOT:' + slot, false);
+                await new Promise(r => setTimeout(r, 50));
+                const text = await file.text();
+                const data = new TextEncoder().encode(text);
+                log('Scene ' + slot + ': ' + data.length + 'B (text)', 'info');
+                sceneReadyReceived = false;
+                sceneSizeAckReceived = false;
+                await sendMessage('SCENE_READY?', false);
+                const readyDeadline = Date.now() + SCENE_READY_TIMEOUT_MS;
+                while (!sceneReadyReceived && Date.now() < readyDeadline) await new Promise(r => setTimeout(r, 50));
+                if (!sceneReadyReceived) { log('READY timeout', 'err'); sceneProgressText.textContent = 'READY timeout'; return; }
+                await sendMessage('SCENE_SIZE:' + data.length, false);
+                const sizeDeadline = Date.now() + SCENE_SIZE_ACK_TIMEOUT_MS;
+                while (!sceneSizeAckReceived && Date.now() < sizeDeadline) await new Promise(r => setTimeout(r, 50));
+                if (!sceneSizeAckReceived) { log('SIZE_ACK timeout', 'err'); sceneProgressText.textContent = 'SIZE_ACK timeout'; return; }
+                await new Promise(r => setTimeout(r, 50));
+                const writer = port.writable.getWriter();
+                try {
+                    let sent = 0;
+                    while (sent < data.length) {
+                        const end = Math.min(sent + CHUNK, data.length);
+                        await writer.write(data.subarray(sent, end));
+                        sent = end;
+                        sceneProgressBar.style.width = Math.round((sent / data.length) * 100) + '%';
+                        await new Promise(r => setTimeout(r, 5));
+                    }
+                } finally {
+                    writer.releaseLock();
+                }
+                await sendMessage('', false);
+                await sendMessage('SCENE_END', false);
+                try {
+                    await waitForSceneDone(8000);
+                } catch (e) {
+                    log('SCENE_DONE timeout: ' + e.message, 'err');
+                    sceneProgressText.textContent = 'SCENE_DONE timeout';
+                    return;
+                }
+                sceneProgressText.textContent = 'Updating metadata...';
+                const hashBuf = await crypto.subtle.digest('SHA-256', data);
+                const hashHex = bytesToHex(new Uint8Array(hashBuf)).toLowerCase();
+                await sendMessage('SET_SCENE_META:' + slot + ':' + hashHex + ':' + data.length, false);
+                const metaOk = await waitForSceneMetaSet(5000);
+                if (!metaOk) {
+                    log('SET_SCENE_META failed or timeout', 'err');
+                    sceneProgressText.textContent = 'Metadata update failed';
+                    return;
+                }
+                sceneProgressText.textContent = 'Ping...';
+                await sendMessage('PING', false);
+                await new Promise(r => setTimeout(r, 400));
+                sceneProgressText.textContent = 'Check config...';
+                await sendMessage('GETCONFIG', false);
+                await new Promise(r => setTimeout(r, 400));
+                sceneProgressText.textContent = 'Get scene metadata...';
+                await sendMessage(slot === 1 ? 'GETS1MT' : 'GETS2MT', false);
+                await new Promise(r => setTimeout(r, 300));
+                await sendMessage('PING', false);
+                await new Promise(r => setTimeout(r, 200));
+                sceneProgressBar.style.width = '100%';
+                sceneProgressText.textContent = 'OK';
+                log('Scene upload OK', 'info');
+            } catch (error) {
+                log('Scene error: ' + error.message, 'err');
+                sceneProgressText.textContent = error.message === 'timeout' ? 'Timeout' : 'Error';
+            } finally {
+                taskInProgress = false;
+            }
+        }
+
+        async function connect() {
+            try {
+                port = await navigator.serial.requestPort();
+                log('Port selected', 'info');
+                await port.open({ baudRate: 115200 });
+                log('Opened at 115200 baud', 'info');
+                await new Promise(r => setTimeout(r, 100));
+                if (port.setSignals) {
+                    await port.setSignals({ dataTerminalReady: true, requestToSend: false });
+                    await new Promise(r => setTimeout(r, 200));
+                }
+                setConnected(true);
+                reader = port.readable.getReader();
+                readLoop();
+                lastPongMs = 0;
+                needConfigOnNextPong = true;
+                modulePresent = false;
+                await new Promise(r => setTimeout(r, 300));
+                await sendMessage('DIGIKEYPING');
+                await new Promise(r => setTimeout(r, 500));
+                presencePingIntervalId = setInterval(() => {
+                    if (!port || !port.writable || taskInProgress) return;
+                    if (lastPongMs > 0 && (Date.now() - lastPongMs > MODULE_DISCONNECT_MS)) {
+                        modulePresent = false;
+                        needConfigOnNextPong = true;
+                        if (statusText) statusText.textContent = 'No module';
+                    }
+                    sendMessage('PING', false);
+                }, PRESENCE_PING_MS);
+            } catch (error) {
+                log('Connection error: ' + error.message, 'err');
+                setConnected(false);
+            }
+        }
+
+        function setConnected(connected) {
+            status.className = 'status-badge ' + (connected ? 'connected' : 'disconnected');
+            statusText.textContent = connected ? 'Connected' : 'Disconnected';
+            connectBtn.disabled = connected;
+            disconnectBtn.disabled = !connected;
+            pingBtn.disabled = !connected;
+            sendBtn.disabled = !connected;
+            sendInput.disabled = !connected;
+            checkModuleBtn.disabled = !connected;
+            uploadSceneBtn.disabled = !connected;
+            sceneFileInput.disabled = !connected;
+            setActive1Btn.disabled = !connected;
+            setActive2Btn.disabled = !connected;
+            setSop0Btn.disabled = !connected;
+            setSop1Btn.disabled = !connected;
+            setSot0Btn.disabled = !connected;
+            setSot1Btn.disabled = !connected;
+        }
+
+        async function readLoop() {
+            const decoder = new TextDecoder('utf-8', { fatal: false });
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) { log('Stream closed', 'info'); break; }
+                    if (!value || value.length === 0) continue;
+                    const chunk = decoder.decode(value, { stream: true });
+                    if (chunk.length > 0) {
+                        messageBuffer += chunk;
+                        const lines = messageBuffer.split(/\r?\n/);
+                        messageBuffer = lines.pop() || '';
+                        for (const line of lines) {
+                            const trimmed = line.replace(/\r$/, '').trim();
+                            if (!trimmed) continue;
+                            if (sceneDownloadState) {
+                                if (trimmed.startsWith('S1FILEEND') || trimmed.startsWith('S2FILEEND')) {
+                                    if (sceneDownloadResolve) {
+                                        sceneDownloadResolve(sceneDownloadLines.join('\n'));
+                                    }
+                                } else if (trimmed.startsWith('S1FILEERR') || trimmed.startsWith('S2FILEERR')) {
+                                    if (sceneDownloadResolve) sceneDownloadResolve(null);
+                                } else {
+                                    sceneDownloadLines.push(trimmed);
+                                }
+                                continue;
+                            }
+                            if (checkModuleState === 'config') {
+                                const pc = parseEndWithCrcHash(trimmed, 'CONFEND');
+                                if (pc) {
+                                    const lines = checkModuleBuffer.slice();
+                                    const payload = lines.length ? lines.join('\n') + '\n' : '';
+                                    checkModuleBuffer = [];
+                                    const v = await verifyFramePayload(payload, pc.crc, pc.hash);
+                                    if (v.ok) {
+                                        configData = parseKeyValueLines(lines);
+                                        checkModuleState = 'board';
+                                    } else {
+                                        checkModuleRunTarget = 0;
+                                        checkModuleState = 'idle';
+                                    }
+                                } else if (trimmed.indexOf(':') > 0 && !trimmed.startsWith('CONFEND:')) {
+                                    checkModuleBuffer.push(trimmed);
+                                } else if (trimmed.startsWith('CONFEND:')) { continue; }
+                                if (pc || (trimmed.indexOf(':') > 0 && !trimmed.startsWith('CONFEND:'))) { continue; }
+                            }
+                            if (checkModuleState === 'board') {
+                                const pb = parseEndWithCrcHash(trimmed, 'BOARDEND');
+                                if (pb) {
+                                    const lines = checkModuleBuffer.slice();
+                                    const payload = lines.length ? lines.join('\n') + '\n' : '';
+                                    checkModuleBuffer = [];
+                                    const v = await verifyFramePayload(payload, pb.crc, pb.hash);
+                                    if (v.ok) {
+                                        boardData = parseKeyValueLines(lines);
+                                        checkModuleState = 's1mt';
+                                    } else {
+                                        checkModuleRunTarget = 0;
+                                        checkModuleState = 'idle';
+                                    }
+                                } else if (trimmed.indexOf(':') > 0 && !trimmed.startsWith('BOARDEND:')) {
+                                    checkModuleBuffer.push(trimmed);
+                                } else if (trimmed.startsWith('BOARDEND:')) { continue; }
+                                if (pb || (trimmed.indexOf(':') > 0 && !trimmed.startsWith('BOARDEND:'))) { continue; }
+                            }
+                            if (checkModuleState === 's1mt') {
+                                const p1 = parseEndWithCrcHash(trimmed, 'S1MTEND');
+                                if (p1) {
+                                    const lines = checkModuleBuffer.slice();
+                                    const payload = lines.length ? lines.join('\n') + '\n' : '';
+                                    checkModuleBuffer = [];
+                                    const v = await verifyFramePayload(payload, p1.crc, p1.hash);
+                                    if (v.ok) {
+                                        s1Meta = parseKeyValueLines(lines);
+                                        checkModuleState = 's2mt';
+                                    } else {
+                                        checkModuleRunTarget = 0;
+                                        checkModuleState = 'idle';
+                                    }
+                                } else if (trimmed.indexOf(':') > 0 && !trimmed.startsWith('S1MTEND:')) {
+                                    checkModuleBuffer.push(trimmed);
+                                } else if (trimmed.startsWith('S1MTEND:')) { continue; }
+                                if (p1 || (trimmed.indexOf(':') > 0 && !trimmed.startsWith('S1MTEND:'))) { continue; }
+                            }
+                            if (checkModuleState === 's2mt') {
+                                const p2 = parseEndWithCrcHash(trimmed, 'S2MTEND');
+                                if (p2) {
+                                    const lines = checkModuleBuffer.slice();
+                                    const payload = lines.length ? lines.join('\n') + '\n' : '';
+                                    checkModuleBuffer = [];
+                                    const v = await verifyFramePayload(payload, p2.crc, p2.hash);
+                                    if (v.ok) {
+                                        s2Meta = parseKeyValueLines(lines);
+                                        checkModuleCollectedBoard.push({ ...boardData });
+                                        checkModuleCollectedConfig.push({ ...configData });
+                                        checkModuleCollectedS1Meta.push({ ...s1Meta });
+                                        checkModuleCollectedS2Meta.push({ ...s2Meta });
+                                        const n = checkModuleCollectedBoard.length;
+                                        if (n < checkModuleRunTarget) {
+                                            checkModuleState = 'config';
+                                            checkModuleBuffer = [];
+                                            await new Promise(r => setTimeout(r, 80));
+                                            try { await sendMessage('GETCONFIG', false); } catch (e) {}
+                                        } else {
+                                            boardData = dominantMerge(checkModuleCollectedBoard);
+                                            configData = dominantMerge(checkModuleCollectedConfig);
+                                            s1Meta = dominantMerge(checkModuleCollectedS1Meta);
+                                            s2Meta = dominantMerge(checkModuleCollectedS2Meta);
+                                            checkModuleRunTarget = 0;
+                                            displayModuleInfo();
+                                            checkModuleState = 'idle';
+                                        }
+                                    } else {
+                                        checkModuleRunTarget = 0;
+                                        checkModuleState = 'idle';
+                                    }
+                                } else if (trimmed.indexOf(':') > 0 && !trimmed.startsWith('S2MTEND:')) {
+                                    checkModuleBuffer.push(trimmed);
+                                } else if (trimmed.startsWith('S2MTEND:')) { continue; }
+                                if (p2 || (trimmed.indexOf(':') > 0 && !trimmed.startsWith('S2MTEND:'))) { continue; }
+                            }
+                            if (trimmed === 'PONG') {
+                                lastPongMs = Date.now();
+                                modulePresent = true;
+                                if (statusText) statusText.textContent = 'Module OK';
+                                if (needConfigOnNextPong) {
+                                    needConfigOnNextPong = false;
+                                    checkModuleState = 'config';
+                                    checkModuleBuffer = [];
+                                    checkModuleRunTarget = 0;
+                                    try { sendMessage('GETCONFIG', false); } catch (e) {}
+                                }
+                            } else if (trimmed === 'DIGIKEYPONG') {
+                                digiKeyVerified = true;
+                            } else if (trimmed === 'SETCONFIG_OK') {
+                                log('RX: SETCONFIG_OK', 'rx');
+                                if (lastSetConfigKey !== null && lastSetConfigValue !== null) {
+                                    configData[lastSetConfigKey] = String(lastSetConfigValue);
+                                    if (lastSetConfigKey === 'scene_active') configStatus.textContent = 'Active: Scene ' + lastSetConfigValue;
+                                    renderGrid(configInfo, configData, configLabels, ['scene_active', 'SOP', 'SOT']);
+                                    lastSetConfigKey = null;
+                                    lastSetConfigValue = null;
+                                }
+                            } else if (trimmed === 'SCENE_SLOT_OK') {
+                                log('RX: SCENE_SLOT_OK', 'rx');
+                            } else if (trimmed.startsWith('SETCONFIG_ERR')) {
+                                log('RX: ' + trimmed, 'err');
+                                lastSetConfigKey = null;
+                                lastSetConfigValue = null;
+                            } else if (trimmed === 'SCENE_READY') {
+                                sceneReadyReceived = true;
+                            } else if (trimmed === 'SCENE_SIZE_ACK') {
+                                sceneSizeAckReceived = true;
+                            } else if (trimmed.startsWith('FRAME_RECV:')) {
+                                const frameId = trimmed.slice(11, 17);
+                                if (sceneProgressText) sceneProgressText.textContent = 'Frame ' + frameId + ' received';
+                            } else if (trimmed === 'SCENE_DONE') {
+                                if (sceneDoneResolve) sceneDoneResolve();
+                            } else if (trimmed === 'SET_SCENE_META_OK') {
+                                if (sceneMetaSetResolve) sceneMetaSetResolve(true);
+                            } else if (trimmed === 'SET_SCENE_META_ERR') {
+                                if (sceneMetaSetResolve) sceneMetaSetResolve(false);
+                            } else if (trimmed.startsWith('SCENE_OK')) {
+                                log('RX: SCENE_OK', 'rx');
+                                if (sceneUploadResolve) { sceneUploadResolve({ ok: true }); sceneUploadResolve = null; }
+                            } else if (trimmed.startsWith('SCENE_ERR')) {
+                                log('RX: ' + trimmed, 'err');
+                                if (sceneUploadResolve) { sceneUploadResolve({ ok: false, msg: trimmed }); sceneUploadResolve = null; }
+                            } else if (trimmed.startsWith('SCENE_HASH_R:')) {
+                                const m = trimmed.match(/^SCENE_HASH_R:[12]:([0-9a-fA-F]{64})$/);
+                                if (m && sceneHashReadResolve) { sceneHashReadResolve({ hash: m[1] }); sceneHashReadResolve = null; }
+                                else if (!m) log('RX: ' + trimmed, 'rx');
+                            } else if (trimmed !== 'OK' && !/^(CONFEND|BOARDEND|S1MTEND|S2MTEND):/.test(trimmed) && !/^(CONFACK|CONFERR|BOARDACK|BOARDERR|S1MTACK|S1MTERR|S2MTACK|S2MTERR)$/.test(trimmed)) {
+                                log('RX: ' + trimmed, 'rx');
+                            }
+                        }
+                        const buf = messageBuffer.replace(/\r$/, '').trim();
+                        const bc = parseEndWithCrcHash(buf, 'CONFEND');
+                        if (checkModuleState === 'config' && bc && buf.length >= 7 + 1 + 8 + 1 + 64) {
+                            const lines = checkModuleBuffer.slice();
+                            const payload = lines.length ? lines.join('\n') + '\n' : '';
+                            checkModuleBuffer = [];
+                            messageBuffer = '';
+                            const v = await verifyFramePayload(payload, bc.crc, bc.hash);
+                            if (v.ok) {
+                                configData = parseKeyValueLines(lines);
+                                checkModuleState = 'board';
+                            } else {
+                                checkModuleRunTarget = 0;
+                                checkModuleState = 'idle';
+                            }
+                        } else if (checkModuleState === 'board') {
+                            const bb = parseEndWithCrcHash(buf, 'BOARDEND');
+                            if (bb && buf.length >= 8 + 1 + 8 + 1 + 64) {
+                            const lines = checkModuleBuffer.slice();
+                            const payload = lines.length ? lines.join('\n') + '\n' : '';
+                            checkModuleBuffer = [];
+                            messageBuffer = '';
+                            const v = await verifyFramePayload(payload, bb.crc, bb.hash);
+                            if (v.ok) {
+                                boardData = parseKeyValueLines(lines);
+                                checkModuleState = 's1mt';
+                            } else {
+                                checkModuleRunTarget = 0;
+                                checkModuleState = 'idle';
+                            }
+                            messageBuffer = '';
+                            }
+                        } else if (checkModuleState === 's1mt') {
+                            const b1 = parseEndWithCrcHash(buf, 'S1MTEND');
+                            if (b1 && buf.length >= 7 + 1 + 8 + 1 + 64) {
+                            const lines = checkModuleBuffer.slice();
+                            const payload = lines.length ? lines.join('\n') + '\n' : '';
+                            checkModuleBuffer = [];
+                            messageBuffer = '';
+                            const v = await verifyFramePayload(payload, b1.crc, b1.hash);
+                            if (v.ok) {
+                                s1Meta = parseKeyValueLines(lines);
+                                checkModuleState = 's2mt';
+                            } else {
+                                checkModuleRunTarget = 0;
+                                checkModuleState = 'idle';
+                            }
+                            messageBuffer = '';
+                            }
+                        } else if (checkModuleState === 's2mt') {
+                            const b2 = parseEndWithCrcHash(buf, 'S2MTEND');
+                            if (b2 && buf.length >= 7 + 1 + 8 + 1 + 64) {
+                            const lines = checkModuleBuffer.slice();
+                            const payload = lines.length ? lines.join('\n') + '\n' : '';
+                            checkModuleBuffer = [];
+                            messageBuffer = '';
+                            const v = await verifyFramePayload(payload, b2.crc, b2.hash);
+                            if (v.ok) {
+                                s2Meta = parseKeyValueLines(lines);
+                                checkModuleCollectedBoard.push({ ...boardData });
+                                checkModuleCollectedConfig.push({ ...configData });
+                                checkModuleCollectedS1Meta.push({ ...s1Meta });
+                                checkModuleCollectedS2Meta.push({ ...s2Meta });
+                                const n = checkModuleCollectedBoard.length;
+                                if (n < checkModuleRunTarget) {
+                                    checkModuleState = 'config';
+                                    checkModuleBuffer = [];
+                                    await new Promise(r => setTimeout(r, 80));
+                                    try { await sendMessage('GETCONFIG', false); } catch (e) {}
+                                } else {
+                                    boardData = dominantMerge(checkModuleCollectedBoard);
+                                    configData = dominantMerge(checkModuleCollectedConfig);
+                                    s1Meta = dominantMerge(checkModuleCollectedS1Meta);
+                                    s2Meta = dominantMerge(checkModuleCollectedS2Meta);
+                                    checkModuleRunTarget = 0;
+                                    displayModuleInfo();
+                                    checkModuleState = 'idle';
+                                }
+                            } else {
+                                checkModuleRunTarget = 0;
+                                checkModuleState = 'idle';
+                            }
+                            messageBuffer = '';
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                if (error.name !== 'NetworkError') log('Read error: ' + error.message, 'err');
+            } finally {
+                if (reader) reader.releaseLock();
+            }
+        }
+
+        disconnectBtn.addEventListener('click', async () => {
+            if (reader) { await reader.cancel(); reader = null; }
+            if (port) { await port.close(); port = null; }
+            if (presencePingIntervalId) { clearInterval(presencePingIntervalId); presencePingIntervalId = null; }
+            digiKeyVerified = false;
+            messageBuffer = '';
+            moduleSN = null;
+            modulePresent = false;
+            boardData = {};
+            configData = {};
+            s1Meta = {};
+            s2Meta = {};
+            checkModuleRunTarget = 0;
+            checkModuleCollectedBoard = [];
+            checkModuleCollectedConfig = [];
+            checkModuleCollectedS1Meta = [];
+            checkModuleCollectedS2Meta = [];
+            checkModuleState = 'idle';
+            checkModuleBuffer = [];
+            lastSetConfigKey = null;
+            lastSetConfigValue = null;
+            if (sceneHashReadTimeoutId) clearTimeout(sceneHashReadTimeoutId);
+            sceneHashReadTimeoutId = null;
+            sceneHashReadResolve = null;
+            sceneDownloadState = false;
+            sceneDownloadLines = [];
+            sceneDownloadResolve = null;
+            sceneDoneResolve = null;
+            sceneMetaSetResolve = null;
+            moduleStatusEl.textContent = '';
+            configStatus.textContent = '';
+            boardPanel.classList.add('hidden');
+            sceneProgress.classList.add('hidden');
+            setConnected(false);
+        });
+
+        pingBtn.addEventListener('click', () => sendMessage('PING', false));
+        checkModuleBtn.addEventListener('click', async () => {
+            modulePresent = false;
+            moduleSN = null;
+            boardData = {};
+            configData = {};
+            s1Meta = {};
+            s2Meta = {};
+            checkModuleRunTarget = CHECK_MODULE_RUNS;
+            checkModuleCollectedBoard = [];
+            checkModuleCollectedConfig = [];
+            checkModuleCollectedS1Meta = [];
+            checkModuleCollectedS2Meta = [];
+            checkModuleState = 'config';
+            checkModuleBuffer = [];
+            boardPanel.classList.add('hidden');
+            moduleStatusEl.textContent = '';
+            messageBuffer = '';
+            boardInfo.innerHTML = '';
+            configInfo.innerHTML = '';
+            s1MetaInfo.innerHTML = '';
+            s2MetaInfo.innerHTML = '';
+            await new Promise(r => setTimeout(r, 50));
+            await sendMessage('GETCONFIG');
+        });
+        sendBtn.addEventListener('click', async () => {
+            const text = sendInput.value.trim();
+            if (text) { await sendMessage(text); sendInput.value = ''; }
+        });
+        sendInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendBtn.click(); });
+        connectBtn.addEventListener('click', connect);
+        uploadSceneBtn.addEventListener('click', uploadScene);
+        setActive1Btn.addEventListener('click', async () => {
+            if (!port || !port.writable) return;
+            lastSetConfigKey = 'scene_active';
+            lastSetConfigValue = 1;
+            await sendMessage('SETCONFIG:scene_active:1');
+        });
+        setActive2Btn.addEventListener('click', async () => {
+            if (!port || !port.writable) return;
+            lastSetConfigKey = 'scene_active';
+            lastSetConfigValue = 2;
+            await sendMessage('SETCONFIG:scene_active:2');
+        });
+        setSop0Btn.addEventListener('click', async () => {
+            if (!port || !port.writable) return;
+            lastSetConfigKey = 'SOP';
+            lastSetConfigValue = 0;
+            await sendMessage('SETCONFIG:SOP:0');
+        });
+        setSop1Btn.addEventListener('click', async () => {
+            if (!port || !port.writable) return;
+            lastSetConfigKey = 'SOP';
+            lastSetConfigValue = 1;
+            await sendMessage('SETCONFIG:SOP:1');
+        });
+        setSot0Btn.addEventListener('click', async () => {
+            if (!port || !port.writable) return;
+            lastSetConfigKey = 'SOT';
+            lastSetConfigValue = 0;
+            await sendMessage('SETCONFIG:SOT:0');
+        });
+        setSot1Btn.addEventListener('click', async () => {
+            if (!port || !port.writable) return;
+            lastSetConfigKey = 'SOT';
+            lastSetConfigValue = 1;
+            await sendMessage('SETCONFIG:SOT:1');
+        });
+
+        if (!navigator.serial) {
+            statusText.textContent = 'WebSerial not supported';
+            connectBtn.disabled = true;
+        }
+    </script>
+</body>
+
+</html>
