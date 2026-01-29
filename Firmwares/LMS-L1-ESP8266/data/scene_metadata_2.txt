@@ -1,0 +1,4 @@
+HASH:0;
+SIZE:0;
+delay:500;
+loop:true;
