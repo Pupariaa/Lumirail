@@ -1,0 +1,39 @@
+#ifndef LMS_L1_ESP8266_CONFIG_H
+#define LMS_L1_ESP8266_CONFIG_H
+
+#define SERIAL_BAUD 115200
+
+#define BOARD_FILE "/board.txt"
+#define CONFIG_FILE "/config.txt"
+#define SCENE_META_1 "/scene_metadata_1.txt"
+#define SCENE_META_2 "/scene_metadata_2.txt"
+#define SCENE_FILE "/scene_file_1.txt"
+#define SCENE_FILE_2 "/scene_file_2.txt"
+
+#define LINE_BUF_MAX 96
+#define SCENE_LINE_BUF_MAX 256
+#define SCENE_STATE1_IDLE_MS 2000
+#define LINE_ACK_TIMEOUT_MS 1000
+
+#define SCENE_SIZE_PFX_LEN 11
+#define SCENE_HASH_PFX_LEN 11
+#define SCENE_HASH_HEX_LEN 64
+#define SCENE_DUMP_CMD_LEN 10
+#define SCENE_DUMP_CHUNK 16
+#define GET_SCENE_HASH_PFX "GET_SCENE_HASH:"
+#define GET_SCENE_HASH_PFX_LEN 15
+#define SCENE_START_PFX "SCENE_START:"
+#define SCENE_START_PFX_LEN 12
+#define SCENE_CHUNK_CRC_PFX "SCENE_CHUNK_CRC:"
+#define SCENE_CHUNK_CRC_PFX_LEN 16
+#define SCENE_CHUNKS 32
+#define GETFILE_HEX_LINE 32
+
+#define SETCONFIG_PFX "SETCONFIG:"
+#define SETCONFIG_PFX_LEN 10
+#define SET_SCENE_META_PFX "SET_SCENE_META:"
+#define SET_SCENE_META_PFX_LEN 15
+
+#define DEBUG_RX 0
+
+#endif
