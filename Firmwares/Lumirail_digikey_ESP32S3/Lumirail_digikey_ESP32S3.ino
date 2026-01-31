@@ -1,5 +1,6 @@
 #include "config.h"
 #include "bridge.h"
+#include "USB.h"
 
 HardwareSerial SerialModule(1);
 static uint8_t lineBuf[LINE_BUF_MAX];
@@ -9,6 +10,9 @@ static uint32_t sceneBytesRemaining;
 static uint32_t sceneBytesLastMs;
 
 void setup() {
+  USB.productName(USB_PRODUCT_NAME);
+  USB.manufacturerName(USB_MANUFACTURER);
+  USB.serialNumber(USB_SERIAL_NUMBER);
   Serial.begin(115200);
   SerialModule.begin(UART_MODULE_BAUD, SERIAL_8N1, UART_RX_PIN, UART_TX_PIN);
   lineLen = 0;

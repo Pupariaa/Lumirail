@@ -12,4 +12,9 @@
 #define SCENE_HASH_HEX_LEN 64
 #define MODULE_SEND_PFX_LEN 11
 
+#define USB_PRODUCT_NAME   "Lumirail DigiKey V1"
+#define USB_CDC_IFACE_NAME "Lumirail DigiKey V1"
+#define USB_MANUFACTURER   "Lumirail"
+#define USB_SERIAL_NUMBER  "1"
+
 #endif
