@@ -21,11 +21,9 @@ void setup() {
 }
 
 void loop() {
-  while (SerialModule.available()) {
-    char c = SerialModule.read();
-    Serial.write(c);
+  while (SerialModule.available() && Serial.availableForWrite() > 0) {
+    Serial.write(SerialModule.read());
   }
-  Serial.flush();
 
   if (sceneState) {
     if (Serial.available() && sceneBytesRemaining > 0) {
