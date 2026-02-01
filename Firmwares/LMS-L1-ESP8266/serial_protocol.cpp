@@ -5,6 +5,7 @@
 #include <bearssl/bearssl_hash.h>
 #include <Arduino.h>
 #include <string.h>
+#include <stdio.h>
 
 static const char CONF_LN[] = "CONF_LN";
 static const char BOARD_LN[] = "BOARD_LN";

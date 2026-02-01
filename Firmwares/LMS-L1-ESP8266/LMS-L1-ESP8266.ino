@@ -25,6 +25,16 @@ static uint32_t sceneFrameCount;
 static char sceneLineBuf[SCENE_LINE_BUF_MAX];
 static size_t sceneLineLen;
 
+static uint32_t lastPingMs;
+static uint32_t lastUploadDoneMs;
+static uint8_t playState;
+static File playFile;
+static uint32_t playDelayMs;
+static uint8_t playLoop;
+static uint32_t playLastFrameMs;
+static char playLineBuf[SCENE_LINE_BUF_MAX];
+static size_t playLineLen;
+
 void setup(void) {
   Serial.begin(SERIAL_BAUD);
   if (!LittleFS.begin()) {
@@ -35,30 +45,48 @@ void setup(void) {
   lineLen = 0;
   sceneState = 0;
   sceneSlot = 1;
+  lastPingMs = millis();
+  lastUploadDoneMs = 0;
+  playState = 0;
 }
 
 void loop(void) {
   if (sceneState == 1) {
-    if (Serial.available() && sceneFile) {
+    while (Serial.available() && sceneFile) {
       int c = Serial.read();
-      if (c >= 0) {
-        sceneState1LastByteMs = millis();
-        if (c == '\n' || c == '\r') {
-          if (c == '\r') {
-            int n = Serial.peek();
-            if (n == '\n') Serial.read();
-          }
-          if (sceneLineLen > 0) {
-            sceneLineBuf[sceneLineLen] = '\0';
-            if (sceneLineLen == 9 && memcmp(sceneLineBuf, "SCENE_END", 9) == 0) {
-              sceneFile.close();
-              sceneFile = File();
-              sceneState = 0;
-              sendLine("SCENE_DONE");
-            } else {
-              sceneFile.write((const uint8_t*)sceneLineBuf, sceneLineLen);
-              sceneFile.write((uint8_t)'\n');
-              sceneFrameCount++;
+      if (c < 0) break;
+      sceneState1LastByteMs = millis();
+      if (c == '\n' || c == '\r') {
+        if (c == '\r') {
+          int n = Serial.peek();
+          if (n == '\n') Serial.read();
+        }
+        if (sceneLineLen > 0) {
+          sceneLineBuf[sceneLineLen] = '\0';
+          if (sceneLineLen == 9 && memcmp(sceneLineBuf, "SCENE_END", 9) == 0) {
+            sceneFile.close();
+            sceneFile = File();
+            sceneState = 0;
+            sendLine("SCENE_DONE");
+            lastUploadDoneMs = millis();
+            break;
+          } else {
+            sceneFile.write((const uint8_t*)sceneLineBuf, sceneLineLen);
+            sceneFile.write((uint8_t)'\n');
+            sceneFrameCount++;
+            sceneLineLen = 0;
+            while (Serial.available() && sceneLineLen < SCENE_LINE_BUF_MAX - 1) {
+              int d = Serial.read();
+              if (d >= 0) {
+                sceneLineBuf[sceneLineLen++] = (char)d;
+                sceneState1LastByteMs = millis();
+              }
+            }
+            for (unsigned long t = millis(); Serial.availableForWrite() < 24 && (millis() - t) < SCENE_FRAME_TX_WAIT_MS; ) {
+              yield();
+              delay(1);
+            }
+            if (Serial.availableForWrite() >= 24) {
               char fn[7];
               uint32_t n = sceneFrameCount;
               fn[6] = '\0';
@@ -71,13 +99,60 @@ void loop(void) {
               Serial.print("FRAME_RECV:");
               Serial.print(fn);
               Serial.print("\r\n");
-              Serial.flush();
             }
-            sceneLineLen = 0;
+            delay(SCENE_FRAME_DRAIN_MS);
+            while (sceneLineLen > 0 && sceneFile) {
+              size_t idx = 0;
+              while (idx < sceneLineLen && sceneLineBuf[idx] != '\n') idx++;
+              if (idx >= sceneLineLen) break;
+              if (idx == 9 && memcmp(sceneLineBuf, "SCENE_END", 9) == 0) {
+                sceneFile.close();
+                sceneFile = File();
+                sceneState = 0;
+                sceneLineLen = 0;
+                sendLine("SCENE_DONE");
+                lastUploadDoneMs = millis();
+                break;
+              }
+              sceneFile.write((const uint8_t*)sceneLineBuf, idx);
+              sceneFile.write((uint8_t)'\n');
+              sceneFrameCount++;
+              if (idx + 1 < sceneLineLen) {
+                memmove(sceneLineBuf, sceneLineBuf + idx + 1, sceneLineLen - idx - 1);
+              }
+              sceneLineLen -= idx + 1;
+              while (Serial.available() && sceneLineLen < SCENE_LINE_BUF_MAX - 1) {
+                int d = Serial.read();
+                if (d >= 0) {
+                  sceneLineBuf[sceneLineLen++] = (char)d;
+                  sceneState1LastByteMs = millis();
+                }
+              }
+              for (unsigned long t = millis(); Serial.availableForWrite() < 24 && (millis() - t) < SCENE_FRAME_TX_WAIT_MS; ) {
+                yield();
+                delay(1);
+              }
+              if (Serial.availableForWrite() >= 24) {
+                char fn[7];
+                uint32_t n = sceneFrameCount;
+                fn[6] = '\0';
+                fn[5] = (char)('0' + (n % 10)); n /= 10;
+                fn[4] = (char)('0' + (n % 10)); n /= 10;
+                fn[3] = (char)('0' + (n % 10)); n /= 10;
+                fn[2] = (char)('0' + (n % 10)); n /= 10;
+                fn[1] = (char)('0' + (n % 10)); n /= 10;
+                fn[0] = (char)('0' + (n % 10));
+                Serial.print("FRAME_RECV:");
+                Serial.print(fn);
+                Serial.print("\r\n");
+              }
+              delay(SCENE_FRAME_DRAIN_MS);
+            }
           }
-        } else if (sceneLineLen < SCENE_LINE_BUF_MAX - 1) {
-          sceneLineBuf[sceneLineLen++] = (char)c;
         }
+        if (sceneState != 1) sceneLineLen = 0;
+      } else if (sceneLineLen < SCENE_LINE_BUF_MAX - 1) {
+        sceneLineBuf[sceneLineLen++] = (char)c;
       }
     }
     if (sceneFile && (millis() - sceneState1LastByteMs) >= SCENE_STATE1_IDLE_MS) {
@@ -108,6 +183,11 @@ void loop(void) {
           Serial.flush();
           sendLine("OK");
         } else if (lineIs(lineBuf, lineLen, "PING", 4)) {
+          lastPingMs = millis();
+          if (playState != 0) {
+            playFile.close();
+            playState = 0;
+          }
           sendLine("PONG");
         } else if (lineIs(lineBuf, lineLen, "GETCONFIG", 9)) {
           delay(10);
@@ -143,6 +223,7 @@ void loop(void) {
           sendFileText(SCENE_FILE_2, "S2FILEERR:nofile", "S2FILEEND");
         } else if (lineIs(lineBuf, lineLen, "SCENE_END", 9)) {
           sendLine("SCENE_DONE");
+          lastUploadDoneMs = millis();
         } else if (lineStartsWith(lineBuf, lineLen, SET_SCENE_META_PFX, SET_SCENE_META_PFX_LEN) && lineLen >= SET_SCENE_META_PFX_LEN + 1 + 2 + 64 + 1 + 1) {
           uint8_t slotId = (lineBuf[SET_SCENE_META_PFX_LEN] == '2') ? 2 : 1;
           if (lineBuf[SET_SCENE_META_PFX_LEN + 1] != ':') { sendLine("SET_SCENE_META_ERR"); lineLen = 0; continue; }
@@ -356,5 +437,66 @@ void loop(void) {
         lineLen = 0;
       }
     }
+  }
+
+  if (sceneState == 0 && (millis() - lastPingMs) >= STANDALONE_PING_TIMEOUT_MS
+      && (lastUploadDoneMs == 0 || (millis() - lastUploadDoneMs) >= STANDALONE_GRACE_AFTER_UPLOAD_MS)) {
+    if (playState != 0) {
+      if ((millis() - playLastFrameMs) >= playDelayMs && playFile) {
+        playLineLen = 0;
+        while (playFile.available() && playLineLen < SCENE_LINE_BUF_MAX - 1) {
+          int c = playFile.read();
+          if (c < 0) break;
+          if (c == '\r') {
+            if (playFile.available() && playFile.peek() == '\n') playFile.read();
+            break;
+          }
+          if (c == '\n') break;
+          playLineBuf[playLineLen++] = (char)c;
+        }
+        playLineBuf[playLineLen] = '\0';
+        if (playLineLen == 0 && !playFile.available()) {
+          if (playLoop) {
+            playFile.seek(0, SeekSet);
+          } else {
+            playFile.close();
+            playState = 0;
+          }
+          playLastFrameMs = millis();
+        } else if (playLineLen == 9 && memcmp(playLineBuf, "SCENE_END", 9) == 0) {
+          if (playLoop) {
+            playFile.seek(0, SeekSet);
+          } else {
+            playFile.close();
+            playState = 0;
+          }
+          playLastFrameMs = millis();
+        } else if (playLineLen > 0) {
+          Serial.println(playLineBuf);
+          playLastFrameMs = millis();
+        } else {
+          playLastFrameMs = millis();
+        }
+      }
+    } else {
+      uint8_t active = 1;
+      uint8_t sop = 0, sot = 0;
+      configRead(&active, &sop, &sot);
+      const char* metaPath = (active == 2) ? SCENE_META_2 : SCENE_META_1;
+      const char* scenePath = (active == 2) ? SCENE_FILE_2 : SCENE_FILE;
+      playDelayMs = 500;
+      playLoop = 1;
+      sceneMetaRead(metaPath, &playDelayMs, &playLoop);
+      if (LittleFS.exists(scenePath)) {
+        playFile = LittleFS.open(scenePath, "r");
+        if (playFile) {
+          playState = 1;
+          playLastFrameMs = millis() - playDelayMs;
+        }
+      }
+    }
+  } else if (playState != 0 && (millis() - lastPingMs) < STANDALONE_PING_TIMEOUT_MS) {
+    playFile.close();
+    playState = 0;
   }
 }
