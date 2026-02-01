@@ -3,3 +3,4 @@ _bmad-output*
 .cursor*
 docs
 test-output.txt
+*.tsbuildinfo
