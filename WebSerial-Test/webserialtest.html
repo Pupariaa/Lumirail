@@ -486,6 +486,7 @@
         const SCENE_SIZE_ACK_TIMEOUT_MS = 5000;
         const SCENE_VERIFY_TIMEOUT_MS = 45000;
         const CHUNK = 64;
+        const SCENE_CHUNK_DELAY_MS = 12;
 
         function waitForSceneResult(timeoutMs) {
             return new Promise((resolve, reject) => {
@@ -616,7 +617,7 @@
                         await writer.write(data.subarray(sent, end));
                         sent = end;
                         sceneProgressBar.style.width = Math.round((sent / data.length) * 100) + '%';
-                        await new Promise(r => setTimeout(r, 5));
+                        await new Promise(r => setTimeout(r, SCENE_CHUNK_DELAY_MS));
                     }
                 } finally {
                     writer.releaseLock();
