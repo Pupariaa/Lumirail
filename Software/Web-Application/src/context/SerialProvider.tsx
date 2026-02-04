@@ -131,6 +131,20 @@ export function SerialProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const uploadLfp = useCallback(async (
+    lfpBuffer: ArrayBuffer,
+    options: Parameters<typeof serialConnection.uploadLfp>[1]
+  ) => {
+    setError(null)
+    try {
+      await serialConnection.uploadLfp(lfpBuffer, options)
+    } catch (err) {
+      const msg = (err as Error).message
+      setError(msg)
+      throw err
+    }
+  }, [])
+
   const clearError = useCallback(() => setError(null), [])
 
   const value = {
@@ -142,6 +156,7 @@ export function SerialProvider({ children }: { children: ReactNode }) {
     getModuleInfo,
     setConfig,
     uploadScene,
+    uploadLfp,
     isSupported: serialConnection.isSupported(),
     error,
     clearError,

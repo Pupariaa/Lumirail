@@ -5,14 +5,15 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { SceneTimeline } from './components/SceneTimeline'
 import { NameEditDialog } from './components/NameEditDialog'
 import { NumberEditDialog } from './components/NumberEditDialog'
-import { Building2, FolderOpen, Users, ListTodo, Settings, UserPlus, Mail, CheckSquare, Clock, Zap, Play, Cpu, Info, Tag, Download } from 'lucide-react'
+import { Building2, FolderOpen, Users, ListTodo, Settings, UserPlus, Mail, CheckSquare, Clock, Zap, Play, Cpu, Info, Tag, Download, Upload } from 'lucide-react'
 import { RegisterPage } from './pages/RegisterPage'
 import { LoginPage } from './pages/LoginPage'
 import { RequestResetPage } from './pages/RequestResetPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { DURATION_MIN, DURATION_MAX, clampDuration } from './data'
-import { generateSceneText } from './sceneGenerator'
-import { UploadSceneDialog } from './components/UploadSceneDialog'
+import { generateSceneFrames } from './sceneGenerator'
+import { buildLfp } from './lfpEncoder'
+import { UploadLfpDialog } from './components/UploadLfpDialog'
 import { dispatchUndo, dispatchRedo } from './lib/undoRedoEvents'
 import { AppSidebar } from './components/AppSidebar'
 import { DeleteModuleConfirmDialog } from './components/DeleteModuleConfirmDialog'
@@ -500,7 +501,8 @@ function ModulePage() {
   const { connectedModuleSn, modulePresent, setConfig, getModuleInfo } = useSerial()
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [moduleNameDialogOpen, setModuleNameDialogOpen] = useState(false)
-  const [uploadSceneOpen, setUploadSceneOpen] = useState(false)
+  const [uploadLfpOpen, setUploadLfpOpen] = useState(false)
+  const [uploadLfpBuffer, setUploadLfpBuffer] = useState<ArrayBuffer | null>(null)
   const [activeTab, setActiveTab] = useState<'scene' | 'config'>('scene')
 
   const workspace = data.workspaces.find((w) => w.id === wsId)
@@ -516,7 +518,7 @@ function ModulePage() {
   const sceneActive = configInfo.scene_active === '2' ? 2 : 1
   const activeMeta = sceneActive === 1 ? s1Meta : s2Meta
   const loop = activeMeta.loop === '1' || activeMeta.loop?.toLowerCase() === 'true'
-  const delayMs = activeMeta.delay ?? ''
+  const delayMs = activeMeta.tick_ms ?? activeMeta.delay ?? ''
   const hasScene2 = !!s2Meta.SIZE && parseInt(s2Meta.SIZE, 10) > 0
 
   const handleDeleteConfirm = () => {
@@ -593,8 +595,7 @@ function ModulePage() {
             const board = module.storedModuleInfo?.board ?? {}
             const onOffCount = Math.max(0, parseInt(board['CHP'] ?? '0', 10))
             const pwmCount = Math.max(0, parseInt(board['CHPWM'] ?? '0', 10))
-            const delayMsVal = parseInt(activeMeta.delay ?? '200', 10)
-            const frameMs = Number.isNaN(delayMsVal) || delayMsVal < 200 ? 200 : delayMsVal
+            const frameMs = 100
             const composition = {
               version: 1,
               params: {
@@ -624,12 +625,64 @@ function ModulePage() {
         <button
           type="button"
           className="btn btn-secondary btn-sm page-tabs-action"
-          onClick={() => setUploadSceneOpen(true)}
+          onClick={() => {
+            const board = module.storedModuleInfo?.board ?? {}
+            let onOffCount = Math.max(0, parseInt(board['CHP'] ?? '0', 10))
+            let pwmCount = Math.max(0, parseInt(board['CHPWM'] ?? '0', 10))
+            if (onOffCount === 0 && pwmCount === 0) {
+              const maxOut = module.blocks.reduce((m, b) => Math.max(m, (b.outputIndex ?? 0) + 1), 0)
+              onOffCount = Math.max(1, maxOut)
+            }
+            const frameMs = 100
+            const durationMs = project.durationMinutes * 60 * 1000
+            const channelCount = onOffCount + pwmCount
+            const frameData = generateSceneFrames(module.blocks, durationMs, onOffCount, pwmCount, frameMs)
+            const lfp = buildLfp({ tickMs: frameMs, channelCount, frameData })
+            const blob = new Blob([lfp], { type: 'application/octet-stream' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `${module.name.replace(/[^a-zA-Z0-9-_]/g, '_')}_scene.lfp`
+            a.click()
+            URL.revokeObjectURL(url)
+          }}
         >
           <Download size={16} strokeWidth={2} aria-hidden />
-          Téléverser la scène
+          Télécharger le binaire
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm page-tabs-action"
+          onClick={() => {
+            const board = module.storedModuleInfo?.board ?? {}
+            let onOffCount = Math.max(0, parseInt(board['CHP'] ?? '0', 10))
+            let pwmCount = Math.max(0, parseInt(board['CHPWM'] ?? '0', 10))
+            if (onOffCount === 0 && pwmCount === 0) {
+              const maxOut = module.blocks.reduce((m, b) => Math.max(m, (b.outputIndex ?? 0) + 1), 0)
+              onOffCount = Math.max(1, maxOut)
+            }
+            const frameMs = 100
+            const durationMs = project.durationMinutes * 60 * 1000
+            const channelCount = onOffCount + pwmCount
+            const frameData = generateSceneFrames(module.blocks, durationMs, onOffCount, pwmCount, frameMs)
+            const lfp = buildLfp({ tickMs: frameMs, channelCount, frameData })
+            setUploadLfpBuffer(lfp)
+            setUploadLfpOpen(true)
+          }}
+        >
+          <Upload size={16} strokeWidth={2} aria-hidden />
+          Téléverser le binaire
         </button>
       </div>
+
+      {uploadLfpOpen && (
+        <UploadLfpDialog
+          open
+          lfpBuffer={uploadLfpBuffer}
+          onSuccess={() => { setUploadLfpOpen(false); setUploadLfpBuffer(null) }}
+          onCancel={() => { setUploadLfpOpen(false); setUploadLfpBuffer(null) }}
+        />
+      )}
 
       {activeTab === 'scene' && (
         <div className="app-layout-with-timeline">
@@ -855,35 +908,6 @@ function ModulePage() {
         </section>
       )}
 
-      {uploadSceneOpen && (() => {
-        const board = module.storedModuleInfo?.board ?? {}
-        let onOffCount = Math.max(0, parseInt(board['CHP'] ?? '0', 10))
-        let pwmCount = Math.max(0, parseInt(board['CHPWM'] ?? '0', 10))
-        if (onOffCount === 0 && pwmCount === 0) {
-          const maxOut = module.blocks.reduce((m, b) => Math.max(m, (b.outputIndex ?? 0) + 1), 0)
-          onOffCount = Math.max(1, maxOut)
-        }
-        const delayMsVal = parseInt(activeMeta.delay ?? '200', 10)
-        const frameMs = Number.isNaN(delayMsVal) || delayMsVal < 200 ? 200 : delayMsVal
-        const durationMs = project.durationMinutes * 60 * 1000
-        const sceneText = generateSceneText(module.blocks, durationMs, onOffCount, pwmCount, frameMs)
-        return (
-          <UploadSceneDialog
-            open
-            sceneText={sceneText}
-            frameMs={frameMs}
-            onOffCount={onOffCount}
-            pwmCount={pwmCount}
-            boardModel={board['MODEL'] ?? ''}
-            boardSn={getModuleSn(module)}
-            durationMs={durationMs}
-            projectDurationMinutes={project.durationMinutes}
-            expectedModuleSn={getModuleSn(module)}
-            onSuccess={() => setUploadSceneOpen(false)}
-            onCancel={() => setUploadSceneOpen(false)}
-          />
-        )
-      })()}
       {moduleNameDialogOpen && (
         <NameEditDialog
           open

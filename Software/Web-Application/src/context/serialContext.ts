@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { SerialConnectionState, ModuleInfo, UploadSceneOptions } from '../serial'
+import type { SerialConnectionState, ModuleInfo, UploadSceneOptions, UploadLfpOptions } from '../serial'
 
 export interface SerialContextValue {
   state: SerialConnectionState
@@ -10,6 +10,7 @@ export interface SerialContextValue {
   getModuleInfo: () => Promise<ModuleInfo>
   setConfig: (key: string, value: string | number) => Promise<boolean>
   uploadScene: (sceneText: string, options: UploadSceneOptions) => Promise<void>
+  uploadLfp: (lfpBuffer: ArrayBuffer, options: UploadLfpOptions) => Promise<void>
   isSupported: boolean
   error: string | null
   clearError: () => void
