@@ -47,10 +47,10 @@ export function parseFrame(buffer: Uint8Array): { frame: LfpFrame; consumed: num
     }
     if (i > buffer.length - FRAME_HEADER_LEN) return null
     const dv = new DataView(buffer.buffer, buffer.byteOffset + i)
-    const len = dv.getUint16(i + 5, true)
+    const len = dv.getUint16(5, true)
     const total = FRAME_HEADER_LEN + len + 2
     if (i + total > buffer.length) return null
-    const crcStored = dv.getUint16(i + 7 + len, true)
+    const crcStored = dv.getUint16(7 + len, true)
     const crcComputed = crc16CcittFalse(buffer.subarray(i + 2, i + 7 + len))
     if (crcStored !== crcComputed) {
       i += 2
