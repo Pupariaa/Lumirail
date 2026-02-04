@@ -1,6 +1,6 @@
 import type { TimelineBlock, IntentionParams } from './data/types'
 
-export const FRAME_MS_DEFAULT = 200
+export const FRAME_MS_DEFAULT = 100
 
 function seededRandom(seed: number): number {
   let s = seed
@@ -177,4 +177,36 @@ export function generateSceneText(
   frameMs: number = FRAME_MS_DEFAULT
 ): string {
   return generateScene(blocks, durationMs, onOffCount, pwmCount, frameMs).join('\n')
+}
+
+export function generateSceneFrames(
+  blocks: TimelineBlock[],
+  durationMs: number,
+  onOffCount: number,
+  pwmCount: number,
+  frameMs: number = FRAME_MS_DEFAULT
+): Uint8Array {
+  const frame = Math.max(FRAME_MS_DEFAULT, frameMs)
+  const channelCount = onOffCount + pwmCount
+  const numFrames = Math.ceil(durationMs / frame)
+  const buf = new Uint8Array(numFrames * channelCount)
+  let off = 0
+  for (let f = 0; f < numFrames; f++) {
+    const timeMs = f * frame
+    if (timeMs >= durationMs) break
+    for (let i = 0; i < onOffCount; i++) {
+      const block = getBlockAtTime(blocks, i, timeMs)
+      const p = block?.effectParams ?? {}
+      const v = block ? evalOnOff(block, timeMs, p) : 0
+      buf[off++] = v ? 255 : 0
+    }
+    for (let i = 0; i < pwmCount; i++) {
+      const outputIndex = onOffCount + i
+      const block = getBlockAtTime(blocks, outputIndex, timeMs)
+      const p = block?.effectParams ?? {}
+      const v = block ? evalPwm(block, timeMs, p) : 0
+      buf[off++] = Math.max(0, Math.min(255, v))
+    }
+  }
+  return buf
 }
