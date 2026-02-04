@@ -5,10 +5,12 @@
 
 #define BOARD_FILE "/board.txt"
 #define CONFIG_FILE "/config.txt"
-#define SCENE_META_1 "/scene_metadata_1.txt"
-#define SCENE_META_2 "/scene_metadata_2.txt"
-#define SCENE_FILE "/scene_file_1.txt"
-#define SCENE_FILE_2 "/scene_file_2.txt"
+
+#define SCENE_TMP "/scene.tmp"
+#define SCENE_BIN "/scene.bin"
+#define SCENE_BAK "/scene.bak"
+
+#define PAGE_SIZE 512
 
 #define LINE_BUF_MAX 96
 #define SCENE_LINE_BUF_MAX 256
@@ -16,21 +18,21 @@
 #define LINE_ACK_TIMEOUT_MS 1000
 #define STANDALONE_PING_TIMEOUT_MS 3000
 #define STANDALONE_GRACE_AFTER_UPLOAD_MS 15000
-#define SCENE_FRAME_DRAIN_MS 1
-#define SCENE_FRAME_TX_WAIT_MS 20
 
-#define SCENE_SIZE_PFX_LEN 11
 #define SCENE_HASH_PFX_LEN 11
 #define SCENE_HASH_HEX_LEN 64
 #define SCENE_DUMP_CMD_LEN 10
 #define SCENE_DUMP_CHUNK 16
 #define GET_SCENE_HASH_PFX "GET_SCENE_HASH:"
 #define GET_SCENE_HASH_PFX_LEN 15
+#define SCENE_UPLOAD_START_PFX "SCENE_UPLOAD_START:"
+#define SCENE_UPLOAD_START_PFX_LEN 18
 #define SCENE_START_PFX "SCENE_START:"
 #define SCENE_START_PFX_LEN 12
-#define SCENE_CHUNK_CRC_PFX "SCENE_CHUNK_CRC:"
-#define SCENE_CHUNK_CRC_PFX_LEN 16
-#define SCENE_CHUNKS 32
+#define SCENE_BLOCK_PFX "SCENE_BLOCK:"
+#define SCENE_BLOCK_PFX_LEN 12
+#define SCENE_BLOCK_SIZE 256
+#define DEBUG_SCENE 1
 #define GETFILE_HEX_LINE 32
 
 #define SETCONFIG_PFX "SETCONFIG:"
@@ -39,5 +41,11 @@
 #define SET_SCENE_META_PFX_LEN 15
 
 #define DEBUG_RX 0
+
+#define LFP_MAX_DIR_LEN 512
+#define LFP_MAX_CHANNELS 64
+#define LFP_MAGIC 0x3150464C
+#define LFP_DIR_MAGIC 0x31524944
+#define LFP_CHUNK_FRAM 0x4D415246
 
 #endif
