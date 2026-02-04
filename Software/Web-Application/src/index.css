@@ -3683,6 +3683,53 @@ body {
   transition: width 0.15s ease;
 }
 
+.upload-scene-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--spacing-xs);
+}
+
+.upload-scene-progress-pct {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+}
+
+.upload-scene-progress-meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+}
+
+.upload-scene-progress-rate {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.upload-scene-progress-remaining {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.upload-scene-progress-phases {
+  margin: var(--spacing-sm) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.upload-scene-progress-phases li {
+  padding: var(--spacing-xs) 0;
+}
+
+.upload-scene-progress-phases li.upload-scene-phase-active {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
 .upload-scene-dialog-actions {
   display: flex;
   justify-content: flex-end;
