@@ -6,7 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lumirail Studio</title>
     <style>
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             max-width: 900px;
@@ -15,7 +18,14 @@
             background: #f8f9fa;
             color: #333;
         }
-        h1 { margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #1a1a1a; }
+
+        h1 {
+            margin: 0 0 16px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
         .card {
             background: #fff;
             border: 1px solid #e0e0e0;
@@ -23,6 +33,7 @@
             padding: 16px;
             margin-bottom: 12px;
         }
+
         .card h3 {
             margin: 0 0 12px 0;
             font-size: 14px;
@@ -31,12 +42,14 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
+
         .toolbar {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             gap: 8px;
         }
+
         button {
             padding: 8px 14px;
             font-size: 13px;
@@ -48,10 +61,27 @@
             color: #333;
             transition: all 0.15s;
         }
-        button:hover:not(:disabled) { background: #f0f0f0; border-color: #bbb; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
-        button.primary:hover:not(:disabled) { background: #1d4ed8; }
+
+        button:hover:not(:disabled) {
+            background: #f0f0f0;
+            border-color: #bbb;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.primary {
+            background: #2563eb;
+            color: #fff;
+            border-color: #2563eb;
+        }
+
+        button.primary:hover:not(:disabled) {
+            background: #1d4ed8;
+        }
+
         input[type="text"] {
             padding: 8px 12px;
             font-size: 13px;
@@ -59,6 +89,7 @@
             border-radius: 6px;
             width: 160px;
         }
+
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -69,30 +100,65 @@
             border-radius: 20px;
             background: #f3f4f6;
         }
-        .status-badge.connected { background: #dcfce7; color: #166534; }
-        .status-badge.disconnected { background: #fee2e2; color: #991b1b; }
+
+        .status-badge.connected {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-badge.disconnected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
         .status-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
             background: currentColor;
         }
+
         .board-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 8px;
         }
+
         .board-item {
             padding: 8px 10px;
             background: #f8f9fa;
             border-radius: 6px;
             font-size: 12px;
         }
-        .board-item .label { color: #666; font-size: 11px; margin-bottom: 2px; }
-        .board-item .value { font-weight: 600; color: #1a1a1a; }
-        .board-section { margin-bottom: 16px; }
-        .board-section:last-child { margin-bottom: 0; }
-        .board-section h4 { margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .board-item .label {
+            color: #666;
+            font-size: 11px;
+            margin-bottom: 2px;
+        }
+
+        .board-item .value {
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .board-section {
+            margin-bottom: 16px;
+        }
+
+        .board-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .board-section h4 {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            font-weight: 600;
+            color: #444;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
         .console {
             background: #1e1e1e;
             border-radius: 6px;
@@ -103,18 +169,40 @@
             overflow-y: auto;
             color: #d4d4d4;
         }
-        .console p { margin: 0; padding: 2px 0; line-height: 1.4; }
-        .console .tx { color: #6b9fff; }
-        .console .rx { color: #98c379; }
-        .console .info { color: #e5c07b; }
-        .console .err { color: #e06c75; }
+
+        .console p {
+            margin: 0;
+            padding: 2px 0;
+            line-height: 1.4;
+        }
+
+        .console .tx {
+            color: #6b9fff;
+        }
+
+        .console .rx {
+            color: #98c379;
+        }
+
+        .console .info {
+            color: #e5c07b;
+        }
+
+        .console .err {
+            color: #e06c75;
+        }
+
         .console-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 8px;
         }
-        .console-header h3 { margin: 0; }
+
+        .console-header h3 {
+            margin: 0;
+        }
+
         .progress-bar {
             height: 6px;
             background: #e5e7eb;
@@ -122,6 +210,7 @@
             overflow: hidden;
             margin-top: 8px;
         }
+
         .progress-bar .fill {
             height: 100%;
             background: #2563eb;
@@ -129,13 +218,22 @@
             transition: width 0.3s;
             width: 0%;
         }
-        .scene-status { font-size: 12px; color: #666; margin-top: 6px; }
+
+        .scene-status {
+            font-size: 12px;
+            color: #666;
+            margin-top: 6px;
+        }
+
         .module-status {
             font-size: 13px;
             color: #666;
             margin-left: auto;
         }
-        .hidden { display: none !important; }
+
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -189,11 +287,13 @@
                 <input type="radio" name="sceneSlot" value="2" id="sceneSlot2">
                 Scene 2
             </label>
-            <input type="file" id="sceneFile" accept=".bin" disabled style="font-size: 12px;">
+            <input type="file" id="sceneFile" accept=".lfp" disabled style="font-size: 12px;">
             <button id="uploadSceneBtn" disabled>Upload Scene</button>
         </div>
         <div id="sceneProgress" class="hidden">
-            <div class="progress-bar"><div id="sceneProgressBar" class="fill"></div></div>
+            <div class="progress-bar">
+                <div id="sceneProgressBar" class="fill"></div>
+            </div>
             <div id="sceneProgressText" class="scene-status"></div>
         </div>
     </div>
@@ -262,6 +362,16 @@
         let sceneDownloadResolve = null;
         let sceneDoneResolve = null;
         let sceneMetaSetResolve = null;
+        let sceneStartOkResolve = null;
+        let sceneBridgeDoneResolve = null;
+        let sceneBridgeDoneReject = null;
+        let sceneBridgeDoneTimeoutId = null;
+        let sceneBlockOkResolve = null;
+        let sceneBlockOkReject = null;
+        let sceneBlockOkExpectedIndex = null;
+        let sceneBlockOkTimeoutId = null;
+        let sceneUploadDoneResolve = null;
+        let sceneUploadDoneReject = null;
         let lastSetConfigKey = null;
         let lastSetConfigValue = null;
         let presencePingIntervalId = null;
@@ -270,6 +380,8 @@
         let needConfigOnNextPong = true;
         const PRESENCE_PING_MS = 1000;
         const MODULE_DISCONNECT_MS = 3000;
+        const GETCONFIG_TIMEOUT_MS = 10000;
+        let checkModuleTimeoutId = null;
 
         const $ = id => document.getElementById(id);
         const connectBtn = $('connectBtn');
@@ -308,8 +420,8 @@
             'BUILDDATE': 'Build Date', 'DRIVER': 'LED Driver', 'CORE': 'MCU',
             'FSUSER': 'Storage', 'FREQ': 'Frequency', 'CHP': 'On/Off CH', 'CHPWM': 'PWM CH'
         };
-        const configLabels = { 'scene_active': 'Active Scene', 'SOP': 'Start on Power', 'SOT': 'Start on Trigger' };
-        const metaLabels = { 'HASH': 'Hash', 'SIZE': 'Size', 'delay': 'Delay', 'loop': 'Loop' };
+        const configLabels = { 'scene_active': 'Active Scene', 'SOP': 'Start on Power', 'SOT': 'Start on Trigger', 'play_loop': 'Play Loop' };
+        const metaLabels = { 'tick_ms': 'Tick (ms)', 'frame_count': 'Frames', 'channel_count': 'Channels', 'HASH': 'Hash', 'SIZE': 'Size', 'delay': 'Delay', 'loop': 'Loop' };
 
         function parseKeyValueLines(lines) {
             const out = {};
@@ -335,7 +447,7 @@
                 let v = String(data[key]);
                 if (key === 'FSUSER') v = (parseInt(v) / 1024).toFixed(0) + ' KB';
                 if (key === 'FREQ') v += ' MHz';
-                if (key === 'delay') v += ' ms';
+                if (key === 'delay' || key === 'tick_ms') v += ' ms';
                 if (key === 'SIZE') v += ' B';
                 div.innerHTML = '<div class="label">' + (labels[key] || key) + '</div><div class="value">' + v + '</div>';
                 container.appendChild(div);
@@ -345,7 +457,7 @@
                 const div = document.createElement('div');
                 div.className = 'board-item';
                 let v = String(data[key]);
-                if (key === 'delay') v += ' ms';
+                if (key === 'delay' || key === 'tick_ms') v += ' ms';
                 if (key === 'SIZE') v += ' B';
                 div.innerHTML = '<div class="label">' + (labels[key] || key) + '</div><div class="value">' + v + '</div>';
                 container.appendChild(div);
@@ -377,10 +489,11 @@
         }
 
         function displayModuleInfo() {
+            if (checkModuleTimeoutId) { clearTimeout(checkModuleTimeoutId); checkModuleTimeoutId = null; }
             renderGrid(boardInfo, boardData, boardLabels, ['MODEL', 'SN', 'REV', 'BUILDDATE', 'CORE', 'DRIVER', 'FREQ', 'FSUSER', 'CHP', 'CHPWM']);
-            renderGrid(configInfo, configData, configLabels, ['scene_active', 'SOP', 'SOT']);
-            renderGrid(s1MetaInfo, s1Meta, metaLabels, ['HASH', 'SIZE', 'delay', 'loop']);
-            renderGrid(s2MetaInfo, s2Meta, metaLabels, ['HASH', 'SIZE', 'delay', 'loop']);
+            renderGrid(configInfo, configData, configLabels, ['scene_active', 'SOP', 'SOT', 'play_loop']);
+            renderGrid(s1MetaInfo, s1Meta, metaLabels, ['tick_ms', 'frame_count', 'channel_count', 'HASH', 'SIZE', 'delay', 'loop']);
+            renderGrid(s2MetaInfo, s2Meta, metaLabels, ['tick_ms', 'frame_count', 'channel_count', 'HASH', 'SIZE', 'delay', 'loop']);
             boardPanel.classList.remove('hidden');
             if (boardData['SN']) {
                 moduleSN = boardData['SN'];
@@ -483,10 +596,12 @@
         }
 
         const SCENE_READY_TIMEOUT_MS = 5000;
-        const SCENE_SIZE_ACK_TIMEOUT_MS = 5000;
         const SCENE_VERIFY_TIMEOUT_MS = 45000;
-        const CHUNK = 64;
-        const SCENE_CHUNK_DELAY_MS = 12;
+        const SCENE_CHUNKS = 32;
+        const SCENE_START_OK_TIMEOUT_MS = 5000;
+        const SCENE_UPLOAD_DONE_TIMEOUT_MS = 30000;
+        const SCENE_BRIDGE_BLOCK_SIZE = 256;
+        const SCENE_BLOCK_OK_TIMEOUT_MS = 3000;
 
         function waitForSceneResult(timeoutMs) {
             return new Promise((resolve, reject) => {
@@ -577,6 +692,78 @@
             return out;
         }
 
+        function waitForSceneStartOk(timeoutMs) {
+            return new Promise((resolve, reject) => {
+                const t = setTimeout(() => {
+                    if (sceneStartOkResolve) { sceneStartOkResolve = null; reject(new Error('SCENE_START_OK timeout')); }
+                }, timeoutMs);
+                sceneStartOkResolve = () => {
+                    clearTimeout(t);
+                    sceneStartOkResolve = null;
+                    resolve();
+                };
+            });
+        }
+        function waitForSceneBlockOk(expectedIndex, timeoutMs) {
+            return new Promise((resolve, reject) => {
+                sceneBlockOkExpectedIndex = expectedIndex;
+                sceneBlockOkTimeoutId = setTimeout(() => {
+                    sceneBlockOkTimeoutId = null;
+                    if (sceneBlockOkResolve) { sceneBlockOkResolve = null; sceneBlockOkReject = null; reject(new Error('SCENE_BLOCK_OK:' + expectedIndex + ' timeout')); }
+                }, timeoutMs);
+                sceneBlockOkResolve = () => {
+                    if (sceneBlockOkTimeoutId) clearTimeout(sceneBlockOkTimeoutId);
+                    sceneBlockOkTimeoutId = null;
+                    sceneBlockOkResolve = null;
+                    sceneBlockOkReject = null;
+                    sceneBlockOkExpectedIndex = null;
+                    resolve();
+                };
+                sceneBlockOkReject = (err) => {
+                    if (sceneBlockOkTimeoutId) clearTimeout(sceneBlockOkTimeoutId);
+                    sceneBlockOkTimeoutId = null;
+                    sceneBlockOkResolve = null;
+                    sceneBlockOkReject = null;
+                    sceneBlockOkExpectedIndex = null;
+                    reject(err);
+                };
+            });
+        }
+        function waitForSceneBridgeDone(timeoutMs) {
+            return new Promise((resolve, reject) => {
+                sceneBridgeDoneTimeoutId = setTimeout(() => {
+                    sceneBridgeDoneTimeoutId = null;
+                    if (sceneBridgeDoneResolve) { sceneBridgeDoneResolve = null; sceneBridgeDoneReject = null; reject(new Error('SCENE_BRIDGE_DONE timeout')); }
+                }, timeoutMs);
+                sceneBridgeDoneResolve = () => {
+                    if (sceneBridgeDoneTimeoutId) clearTimeout(sceneBridgeDoneTimeoutId);
+                    sceneBridgeDoneTimeoutId = null;
+                    sceneBridgeDoneResolve = null;
+                    sceneBridgeDoneReject = null;
+                    resolve();
+                };
+                sceneBridgeDoneReject = (err) => {
+                    if (sceneBridgeDoneTimeoutId) clearTimeout(sceneBridgeDoneTimeoutId);
+                    sceneBridgeDoneTimeoutId = null;
+                    sceneBridgeDoneResolve = null;
+                    sceneBridgeDoneReject = null;
+                    reject(err);
+                };
+            });
+        }
+        function waitForSceneUploadDone(timeoutMs) {
+            return new Promise((resolve, reject) => {
+                const t = setTimeout(() => {
+                    if (sceneUploadDoneResolve) { sceneUploadDoneResolve = null; reject(new Error('SCENE_UPLOAD_DONE timeout')); }
+                }, timeoutMs);
+                sceneUploadDoneResolve = () => {
+                    clearTimeout(t);
+                    sceneUploadDoneResolve = null;
+                    resolve();
+                };
+            });
+        }
+
         async function uploadScene() {
             if (!port || !port.writable) { log('Port not available', 'err'); return; }
             const file = sceneFileInput.files[0];
@@ -586,78 +773,81 @@
             try {
                 sceneProgress.classList.remove('hidden');
                 sceneProgressBar.style.width = '0%';
-                sceneProgressText.textContent = 'Ping...';
-                await sendMessage('PING', false);
-                await new Promise(r => setTimeout(r, 400));
-                sceneProgressText.textContent = 'Check config...';
-                await sendMessage('GETCONFIG', false);
-                await new Promise(r => setTimeout(r, 400));
-                sceneProgressText.textContent = 'Uploading...';
+                sceneProgressText.textContent = 'Reading file...';
+                const data = new Uint8Array(await file.arrayBuffer());
+                const totalSize = data.length;
+                if (totalSize === 0 || totalSize > 1024 * 1024) {
+                    log('Invalid file size', 'err');
+                    sceneProgressText.textContent = 'Invalid size';
+                    return;
+                }
+                log('Scene ' + slot + ': ' + totalSize + 'B LFP', 'info');
+                log('DBG:upload start slot=' + slot + ' totalSize=' + totalSize, 'info');
+                sceneProgressText.textContent = 'Slot...';
                 await sendMessage('SCENE_SLOT:' + slot, false);
-                await new Promise(r => setTimeout(r, 50));
-                const text = await file.text();
-                const data = new TextEncoder().encode(text);
-                log('Scene ' + slot + ': ' + data.length + 'B (text)', 'info');
-                sceneReadyReceived = false;
-                sceneSizeAckReceived = false;
-                await sendMessage('SCENE_READY?', false);
-                const readyDeadline = Date.now() + SCENE_READY_TIMEOUT_MS;
-                while (!sceneReadyReceived && Date.now() < readyDeadline) await new Promise(r => setTimeout(r, 50));
-                if (!sceneReadyReceived) { log('READY timeout', 'err'); sceneProgressText.textContent = 'READY timeout'; return; }
-                await sendMessage('SCENE_SIZE:' + data.length, false);
-                const sizeDeadline = Date.now() + SCENE_SIZE_ACK_TIMEOUT_MS;
-                while (!sceneSizeAckReceived && Date.now() < sizeDeadline) await new Promise(r => setTimeout(r, 50));
-                if (!sceneSizeAckReceived) { log('SIZE_ACK timeout', 'err'); sceneProgressText.textContent = 'SIZE_ACK timeout'; return; }
-                await new Promise(r => setTimeout(r, 50));
+                log('DBG:TX SCENE_SLOT:' + slot, 'info');
+                await new Promise(r => setTimeout(r, 80));
+                sceneProgressText.textContent = 'Bridge...';
+                await sendMessage('SCENE_START:' + slot + ':' + totalSize, false);
+                log('DBG:TX SCENE_START:' + slot + ':' + totalSize, 'info');
+                await new Promise(r => setTimeout(r, 150));
+                const streamLen = totalSize + 982;
+                log('DBG:streamLen=' + streamLen + ' numBlocks=' + Math.ceil(streamLen / SCENE_BRIDGE_BLOCK_SIZE), 'info');
+                const stream = new Uint8Array(streamLen);
+                const chunkSize = Math.ceil(totalSize / SCENE_CHUNKS);
+                let offset = 0;
+                for (let i = 0; i < SCENE_CHUNKS; i++) {
+                    const start = i * chunkSize;
+                    const end = Math.min(start + chunkSize, totalSize);
+                    const chunk = data.subarray(start, end);
+                    stream.set(chunk, offset);
+                    offset += chunk.length;
+                    const crc8 = crc32BytesHex(chunk);
+                    const line = '\nSCENE_CHUNK_CRC:' + i + ':' + crc8 + '\n';
+                    const lineBytes = new TextEncoder().encode(line);
+                    stream.set(lineBytes, offset);
+                    offset += lineBytes.length;
+                }
+                const numBlocks = Math.ceil(streamLen / SCENE_BRIDGE_BLOCK_SIZE);
                 const writer = port.writable.getWriter();
                 try {
-                    let sent = 0;
-                    while (sent < data.length) {
-                        const end = Math.min(sent + CHUNK, data.length);
-                        await writer.write(data.subarray(sent, end));
-                        sent = end;
-                        sceneProgressBar.style.width = Math.round((sent / data.length) * 100) + '%';
-                        await new Promise(r => setTimeout(r, SCENE_CHUNK_DELAY_MS));
+                    for (let i = 0; i < numBlocks; i++) {
+                        const blockStart = i * SCENE_BRIDGE_BLOCK_SIZE;
+                        const blockEnd = Math.min(blockStart + SCENE_BRIDGE_BLOCK_SIZE, streamLen);
+                        const block = stream.subarray(blockStart, blockEnd);
+                        await writer.write(block);
+                        log('DBG:block ' + i + '/' + numBlocks + ' sent ' + block.length + 'B', 'info');
+                        await waitForSceneBlockOk(i, SCENE_BLOCK_OK_TIMEOUT_MS);
+                        log('DBG:RX SCENE_BLOCK_OK:' + i, 'info');
+                        sceneProgressBar.style.width = Math.round(((i + 1) / numBlocks) * 100) + '%';
+                        sceneProgressText.textContent = 'Block ' + (i + 1) + '/' + numBlocks;
                     }
                 } finally {
                     writer.releaseLock();
                 }
-                await sendMessage('', false);
-                await sendMessage('SCENE_END', false);
-                try {
-                    await waitForSceneDone(8000);
-                } catch (e) {
-                    log('SCENE_DONE timeout: ' + e.message, 'err');
-                    sceneProgressText.textContent = 'SCENE_DONE timeout';
-                    return;
-                }
-                sceneProgressText.textContent = 'Updating metadata...';
+                log('DBG:waiting SCENE_BRIDGE_DONE', 'info');
+                await waitForSceneBridgeDone(SCENE_UPLOAD_DONE_TIMEOUT_MS);
+                log('DBG:RX SCENE_BRIDGE_DONE', 'info');
+                sceneProgressText.textContent = 'Module...';
+                log('DBG:waiting SCENE_UPLOAD_DONE', 'info');
+                await waitForSceneUploadDone(SCENE_UPLOAD_DONE_TIMEOUT_MS);
+                log('DBG:RX SCENE_UPLOAD_DONE', 'info');
+                sceneProgressText.textContent = 'Verifying...';
                 const hashBuf = await crypto.subtle.digest('SHA-256', data);
                 const hashHex = bytesToHex(new Uint8Array(hashBuf)).toLowerCase();
-                await sendMessage('SET_SCENE_META:' + slot + ':' + hashHex + ':' + data.length, false);
-                const metaOk = await waitForSceneMetaSet(5000);
-                if (!metaOk) {
-                    log('SET_SCENE_META failed or timeout', 'err');
-                    sceneProgressText.textContent = 'Metadata update failed';
+                await sendMessage('SCENE_HASH:' + hashHex, false);
+                const result = await waitForSceneResult(SCENE_VERIFY_TIMEOUT_MS);
+                if (!result.ok) {
+                    log('Verify failed: ' + (result.msg || ''), 'err');
+                    sceneProgressText.textContent = 'Verify failed';
                     return;
                 }
-                sceneProgressText.textContent = 'Ping...';
-                await sendMessage('PING', false);
-                await new Promise(r => setTimeout(r, 400));
-                sceneProgressText.textContent = 'Check config...';
-                await sendMessage('GETCONFIG', false);
-                await new Promise(r => setTimeout(r, 400));
-                sceneProgressText.textContent = 'Get scene metadata...';
-                await sendMessage(slot === 1 ? 'GETS1MT' : 'GETS2MT', false);
-                await new Promise(r => setTimeout(r, 300));
-                await sendMessage('PING', false);
-                await new Promise(r => setTimeout(r, 200));
                 sceneProgressBar.style.width = '100%';
                 sceneProgressText.textContent = 'OK';
-                log('Scene upload OK', 'info');
+                log('LFP upload OK', 'info');
             } catch (error) {
-                log('Scene error: ' + error.message, 'err');
-                sceneProgressText.textContent = error.message === 'timeout' ? 'Timeout' : 'Error';
+                log('Upload error: ' + error.message, 'err');
+                sceneProgressText.textContent = error.message.includes('timeout') ? 'Timeout' : 'Error';
             } finally {
                 taskInProgress = false;
             }
@@ -755,6 +945,7 @@
                                         configData = parseKeyValueLines(lines);
                                         checkModuleState = 'board';
                                     } else {
+                                        if (checkModuleTimeoutId) { clearTimeout(checkModuleTimeoutId); checkModuleTimeoutId = null; }
                                         checkModuleRunTarget = 0;
                                         checkModuleState = 'idle';
                                     }
@@ -774,6 +965,7 @@
                                         boardData = parseKeyValueLines(lines);
                                         checkModuleState = 's1mt';
                                     } else {
+                                        if (checkModuleTimeoutId) { clearTimeout(checkModuleTimeoutId); checkModuleTimeoutId = null; }
                                         checkModuleRunTarget = 0;
                                         checkModuleState = 'idle';
                                     }
@@ -793,6 +985,7 @@
                                         s1Meta = parseKeyValueLines(lines);
                                         checkModuleState = 's2mt';
                                     } else {
+                                        if (checkModuleTimeoutId) { clearTimeout(checkModuleTimeoutId); checkModuleTimeoutId = null; }
                                         checkModuleRunTarget = 0;
                                         checkModuleState = 'idle';
                                     }
@@ -819,7 +1012,7 @@
                                             checkModuleState = 'config';
                                             checkModuleBuffer = [];
                                             await new Promise(r => setTimeout(r, 80));
-                                            try { await sendMessage('GETCONFIG', false); } catch (e) {}
+                                            try { await sendMessage('GETCONFIG', false); } catch (e) { }
                                         } else {
                                             boardData = dominantMerge(checkModuleCollectedBoard);
                                             configData = dominantMerge(checkModuleCollectedConfig);
@@ -830,6 +1023,7 @@
                                             checkModuleState = 'idle';
                                         }
                                     } else {
+                                        if (checkModuleTimeoutId) { clearTimeout(checkModuleTimeoutId); checkModuleTimeoutId = null; }
                                         checkModuleRunTarget = 0;
                                         checkModuleState = 'idle';
                                     }
@@ -844,10 +1038,20 @@
                                 if (statusText) statusText.textContent = 'Module OK';
                                 if (needConfigOnNextPong) {
                                     needConfigOnNextPong = false;
+                                    if (checkModuleTimeoutId) { clearTimeout(checkModuleTimeoutId); checkModuleTimeoutId = null; }
                                     checkModuleState = 'config';
                                     checkModuleBuffer = [];
                                     checkModuleRunTarget = 0;
-                                    try { sendMessage('GETCONFIG', false); } catch (e) {}
+                                    checkModuleTimeoutId = setTimeout(() => {
+                                        checkModuleTimeoutId = null;
+                                        if (checkModuleState !== 'idle') {
+                                            checkModuleState = 'idle';
+                                            checkModuleRunTarget = 0;
+                                            checkModuleBuffer = [];
+                                            log('GETCONFIG timeout - check module connection', 'err');
+                                        }
+                                    }, GETCONFIG_TIMEOUT_MS);
+                                    try { sendMessage('GETCONFIG', false); } catch (e) { }
                                 }
                             } else if (trimmed === 'DIGIKEYPONG') {
                                 digiKeyVerified = true;
@@ -868,11 +1072,24 @@
                                 lastSetConfigValue = null;
                             } else if (trimmed === 'SCENE_READY') {
                                 sceneReadyReceived = true;
-                            } else if (trimmed === 'SCENE_SIZE_ACK') {
-                                sceneSizeAckReceived = true;
-                            } else if (trimmed.startsWith('FRAME_RECV:')) {
-                                const frameId = trimmed.slice(11, 17);
-                                if (sceneProgressText) sceneProgressText.textContent = 'Frame ' + frameId + ' received';
+                            } else if (trimmed.startsWith('BRIDGE:DBG:') || trimmed.startsWith('MOD:DBG:')) {
+                                log('RX: ' + trimmed, 'rx');
+                            } else if (trimmed === 'SCENE_START_OK') {
+                                log('RX: SCENE_START_OK', 'rx');
+                                if (sceneStartOkResolve) sceneStartOkResolve();
+                            } else if (/^SCENE_BLOCK_OK:\d+$/.test(trimmed)) {
+                                const m = trimmed.match(/^SCENE_BLOCK_OK:(\d+)$/);
+                                const idx = m ? parseInt(m[1], 10) : -1;
+                                if (sceneBlockOkResolve && idx === sceneBlockOkExpectedIndex) sceneBlockOkResolve();
+                            } else if (trimmed === 'SCENE_BRIDGE_DONE') {
+                                if (sceneBridgeDoneResolve) sceneBridgeDoneResolve();
+                            } else if (trimmed.startsWith('SCENE_BRIDGE_ERR:')) {
+                                if (sceneBridgeDoneReject) sceneBridgeDoneReject(new Error(trimmed));
+                                if (sceneUploadDoneReject) sceneUploadDoneReject(new Error(trimmed));
+                                log('RX: ' + trimmed, 'err');
+                            } else if (trimmed === 'SCENE_UPLOAD_DONE') {
+                                log('RX: SCENE_UPLOAD_DONE', 'rx');
+                                if (sceneUploadDoneResolve) sceneUploadDoneResolve();
                             } else if (trimmed === 'SCENE_DONE') {
                                 if (sceneDoneResolve) sceneDoneResolve();
                             } else if (trimmed === 'SET_SCENE_META_OK') {
@@ -889,6 +1106,8 @@
                                 const m = trimmed.match(/^SCENE_HASH_R:[12]:([0-9a-fA-F]{64})$/);
                                 if (m && sceneHashReadResolve) { sceneHashReadResolve({ hash: m[1] }); sceneHashReadResolve = null; }
                                 else if (!m) log('RX: ' + trimmed, 'rx');
+                            } else if (trimmed.startsWith('SCENE_CHUNK_OK:') || trimmed.startsWith('SCENE_CHUNK_ERR:')) {
+                                log('RX: ' + trimmed, 'rx');
                             } else if (trimmed !== 'OK' && !/^(CONFEND|BOARDEND|S1MTEND|S2MTEND):/.test(trimmed) && !/^(CONFACK|CONFERR|BOARDACK|BOARDERR|S1MTACK|S1MTERR|S2MTACK|S2MTERR)$/.test(trimmed)) {
                                 log('RX: ' + trimmed, 'rx');
                             }
@@ -905,77 +1124,81 @@
                                 configData = parseKeyValueLines(lines);
                                 checkModuleState = 'board';
                             } else {
+                                if (checkModuleTimeoutId) { clearTimeout(checkModuleTimeoutId); checkModuleTimeoutId = null; }
                                 checkModuleRunTarget = 0;
                                 checkModuleState = 'idle';
                             }
                         } else if (checkModuleState === 'board') {
                             const bb = parseEndWithCrcHash(buf, 'BOARDEND');
                             if (bb && buf.length >= 8 + 1 + 8 + 1 + 64) {
-                            const lines = checkModuleBuffer.slice();
-                            const payload = lines.length ? lines.join('\n') + '\n' : '';
-                            checkModuleBuffer = [];
-                            messageBuffer = '';
-                            const v = await verifyFramePayload(payload, bb.crc, bb.hash);
-                            if (v.ok) {
-                                boardData = parseKeyValueLines(lines);
-                                checkModuleState = 's1mt';
-                            } else {
-                                checkModuleRunTarget = 0;
-                                checkModuleState = 'idle';
-                            }
-                            messageBuffer = '';
+                                const lines = checkModuleBuffer.slice();
+                                const payload = lines.length ? lines.join('\n') + '\n' : '';
+                                checkModuleBuffer = [];
+                                messageBuffer = '';
+                                const v = await verifyFramePayload(payload, bb.crc, bb.hash);
+                                if (v.ok) {
+                                    boardData = parseKeyValueLines(lines);
+                                    checkModuleState = 's1mt';
+                                } else {
+                                    if (checkModuleTimeoutId) { clearTimeout(checkModuleTimeoutId); checkModuleTimeoutId = null; }
+                                    checkModuleRunTarget = 0;
+                                    checkModuleState = 'idle';
+                                }
+                                messageBuffer = '';
                             }
                         } else if (checkModuleState === 's1mt') {
                             const b1 = parseEndWithCrcHash(buf, 'S1MTEND');
                             if (b1 && buf.length >= 7 + 1 + 8 + 1 + 64) {
-                            const lines = checkModuleBuffer.slice();
-                            const payload = lines.length ? lines.join('\n') + '\n' : '';
-                            checkModuleBuffer = [];
-                            messageBuffer = '';
-                            const v = await verifyFramePayload(payload, b1.crc, b1.hash);
-                            if (v.ok) {
-                                s1Meta = parseKeyValueLines(lines);
-                                checkModuleState = 's2mt';
-                            } else {
-                                checkModuleRunTarget = 0;
-                                checkModuleState = 'idle';
-                            }
-                            messageBuffer = '';
+                                const lines = checkModuleBuffer.slice();
+                                const payload = lines.length ? lines.join('\n') + '\n' : '';
+                                checkModuleBuffer = [];
+                                messageBuffer = '';
+                                const v = await verifyFramePayload(payload, b1.crc, b1.hash);
+                                if (v.ok) {
+                                    s1Meta = parseKeyValueLines(lines);
+                                    checkModuleState = 's2mt';
+                                } else {
+                                    if (checkModuleTimeoutId) { clearTimeout(checkModuleTimeoutId); checkModuleTimeoutId = null; }
+                                    checkModuleRunTarget = 0;
+                                    checkModuleState = 'idle';
+                                }
+                                messageBuffer = '';
                             }
                         } else if (checkModuleState === 's2mt') {
                             const b2 = parseEndWithCrcHash(buf, 'S2MTEND');
                             if (b2 && buf.length >= 7 + 1 + 8 + 1 + 64) {
-                            const lines = checkModuleBuffer.slice();
-                            const payload = lines.length ? lines.join('\n') + '\n' : '';
-                            checkModuleBuffer = [];
-                            messageBuffer = '';
-                            const v = await verifyFramePayload(payload, b2.crc, b2.hash);
-                            if (v.ok) {
-                                s2Meta = parseKeyValueLines(lines);
-                                checkModuleCollectedBoard.push({ ...boardData });
-                                checkModuleCollectedConfig.push({ ...configData });
-                                checkModuleCollectedS1Meta.push({ ...s1Meta });
-                                checkModuleCollectedS2Meta.push({ ...s2Meta });
-                                const n = checkModuleCollectedBoard.length;
-                                if (n < checkModuleRunTarget) {
-                                    checkModuleState = 'config';
-                                    checkModuleBuffer = [];
-                                    await new Promise(r => setTimeout(r, 80));
-                                    try { await sendMessage('GETCONFIG', false); } catch (e) {}
+                                const lines = checkModuleBuffer.slice();
+                                const payload = lines.length ? lines.join('\n') + '\n' : '';
+                                checkModuleBuffer = [];
+                                messageBuffer = '';
+                                const v = await verifyFramePayload(payload, b2.crc, b2.hash);
+                                if (v.ok) {
+                                    s2Meta = parseKeyValueLines(lines);
+                                    checkModuleCollectedBoard.push({ ...boardData });
+                                    checkModuleCollectedConfig.push({ ...configData });
+                                    checkModuleCollectedS1Meta.push({ ...s1Meta });
+                                    checkModuleCollectedS2Meta.push({ ...s2Meta });
+                                    const n = checkModuleCollectedBoard.length;
+                                    if (n < checkModuleRunTarget) {
+                                        checkModuleState = 'config';
+                                        checkModuleBuffer = [];
+                                        await new Promise(r => setTimeout(r, 80));
+                                        try { await sendMessage('GETCONFIG', false); } catch (e) { }
+                                    } else {
+                                        boardData = dominantMerge(checkModuleCollectedBoard);
+                                        configData = dominantMerge(checkModuleCollectedConfig);
+                                        s1Meta = dominantMerge(checkModuleCollectedS1Meta);
+                                        s2Meta = dominantMerge(checkModuleCollectedS2Meta);
+                                        checkModuleRunTarget = 0;
+                                        displayModuleInfo();
+                                        checkModuleState = 'idle';
+                                    }
                                 } else {
-                                    boardData = dominantMerge(checkModuleCollectedBoard);
-                                    configData = dominantMerge(checkModuleCollectedConfig);
-                                    s1Meta = dominantMerge(checkModuleCollectedS1Meta);
-                                    s2Meta = dominantMerge(checkModuleCollectedS2Meta);
+                                    if (checkModuleTimeoutId) { clearTimeout(checkModuleTimeoutId); checkModuleTimeoutId = null; }
                                     checkModuleRunTarget = 0;
-                                    displayModuleInfo();
                                     checkModuleState = 'idle';
                                 }
-                            } else {
-                                checkModuleRunTarget = 0;
-                                checkModuleState = 'idle';
-                            }
-                            messageBuffer = '';
+                                messageBuffer = '';
                             }
                         }
                     }
@@ -988,6 +1211,7 @@
         }
 
         disconnectBtn.addEventListener('click', async () => {
+            if (checkModuleTimeoutId) { clearTimeout(checkModuleTimeoutId); checkModuleTimeoutId = null; }
             if (reader) { await reader.cancel(); reader = null; }
             if (port) { await port.close(); port = null; }
             if (presencePingIntervalId) { clearInterval(presencePingIntervalId); presencePingIntervalId = null; }
@@ -1036,8 +1260,10 @@
             checkModuleCollectedConfig = [];
             checkModuleCollectedS1Meta = [];
             checkModuleCollectedS2Meta = [];
+            if (checkModuleTimeoutId) { clearTimeout(checkModuleTimeoutId); checkModuleTimeoutId = null; }
             checkModuleState = 'config';
             checkModuleBuffer = [];
+            checkModuleRunTarget = 1;
             boardPanel.classList.add('hidden');
             moduleStatusEl.textContent = '';
             messageBuffer = '';
@@ -1045,8 +1271,17 @@
             configInfo.innerHTML = '';
             s1MetaInfo.innerHTML = '';
             s2MetaInfo.innerHTML = '';
+            checkModuleTimeoutId = setTimeout(() => {
+                checkModuleTimeoutId = null;
+                if (checkModuleState !== 'idle') {
+                    checkModuleState = 'idle';
+                    checkModuleRunTarget = 0;
+                    checkModuleBuffer = [];
+                    log('GETCONFIG timeout - check module connection', 'err');
+                }
+            }, GETCONFIG_TIMEOUT_MS);
             await new Promise(r => setTimeout(r, 50));
-            await sendMessage('GETCONFIG');
+            await sendMessage('GETCONFIG', false);
         });
         sendBtn.addEventListener('click', async () => {
             const text = sendInput.value.trim();

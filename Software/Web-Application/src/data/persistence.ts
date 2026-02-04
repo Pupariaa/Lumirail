@@ -219,7 +219,7 @@ export function updateProject(
   adapter: StorageAdapter,
   userId: string,
   projectId: string,
-  updates: Partial<Pick<Project, 'name' | 'workspaceId' | 'durationMinutes' | 'bookmarks' | 'momentTracks' | 'dayNightDawnSimulatedH' | 'dayNightDuskSimulatedH' | 'dayNightNightColor' | 'dayNightDayColor' | 'dayNightLabels'>>
+  updates: Partial<Pick<Project, 'name' | 'workspaceId' | 'durationMinutes' | 'bookmarks' | 'momentTracks' | 'dayNightDawnSimulatedH' | 'dayNightDuskSimulatedH' | 'dayNightNightColor' | 'dayNightDayColor' | 'dayNightLabels' | 'plateau'>>
 ): Project | null {
   const data = loadUserData(adapter, userId)
   const index = data.projects.findIndex((p) => p.id === projectId)
@@ -262,6 +262,9 @@ export function updateProject(
   }
   if (updates.dayNightLabels !== undefined) {
     project.dayNightLabels = updates.dayNightLabels
+  }
+  if (updates.plateau !== undefined) {
+    project.plateau = updates.plateau
   }
   data.projects[index] = project
   saveUserData(adapter, userId, data)

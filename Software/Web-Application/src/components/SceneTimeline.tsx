@@ -246,7 +246,7 @@ export function SceneTimeline({
   const fitToView = () => setZoomLevel(1)
   const zoomPercent = Math.round(zoomLevel * 100)
   const dataContext = useContext(DataContext)
-  const { undo, redo, canUndo, canRedo } = dataContext ?? { undo: () => {}, redo: () => {}, canUndo: false, canRedo: false }
+  const { undo, redo, canUndo, canRedo } = dataContext ?? { undo: () => { }, redo: () => { }, canUndo: false, canRedo: false }
 
   useEffect(() => {
     const el = contentRef.current
@@ -475,9 +475,9 @@ export function SceneTimeline({
   const allTracks = [cycleTrack, ...momentTracks]
   const selectedMomentData = selectedMoment
     ? (() => {
-        const track = allTracks.find((t) => t.id === selectedMoment.trackId)
-        return track?.moments.find((m) => m.id === selectedMoment.momentId)
-      })()
+      const track = allTracks.find((t) => t.id === selectedMoment.trackId)
+      return track?.moments.find((m) => m.id === selectedMoment.momentId)
+    })()
     : null
 
   useEffect(() => {
@@ -995,73 +995,73 @@ export function SceneTimeline({
                     >
                       <Trash2 size={16} strokeWidth={2} />
                     </button>
-                    )}
-                  </>
-                )
-              })(              ) : isModuleMode && selectedIntentionIds.size > 0 ? (
-                <>
-                  <span className="scene-timeline-selection-label">
-                    {selectedIntentionIds.size} intention{selectedIntentionIds.size > 1 ? 's' : ''} sélectionnée{selectedIntentionIds.size > 1 ? 's' : ''}
-                  </span>
-                  <button
-                    type="button"
-                    className="scene-timeline-action-btn-icon"
-                    onClick={handleCopyIntention}
-                    disabled={selectedIntentionIds.size !== 1}
-                    title={selectedIntentionIds.size !== 1 ? 'Copier une seule intention' : 'Copier (Ctrl+C)'}
-                    aria-label="Copier"
-                  >
-                    <Copy size={16} strokeWidth={2} />
-                  </button>
-                  <button
-                    type="button"
-                    className="scene-timeline-action-btn-icon"
-                    onClick={() => setIntentionTypeDialog({ blockIds: [...selectedIntentionIds] })}
-                    title="Modifier l'intention"
-                    aria-label="Modifier l'intention"
-                  >
-                    <Pencil size={16} strokeWidth={2} />
-                  </button>
-                  <button
-                    type="button"
-                    className="scene-timeline-action-btn-icon"
-                    onClick={() => {
-                      const input = document.createElement('input')
-                      input.type = 'color'
-                      const block = module?.blocks.find((b) => selectedIntentionIds.has(b.id))
-                      input.value = block?.color || '#5fd68a'
-                      input.style.position = 'absolute'
-                      input.style.opacity = '0'
-                      input.style.pointerEvents = 'none'
-                      document.body.appendChild(input)
-                      input.onchange = () => {
-                        selectedIntentionIds.forEach((id) => onUpdateBlock?.(id, { color: input.value }))
-                        document.body.removeChild(input)
-                      }
-                      input.onblur = () => {
-                        if (document.body.contains(input)) document.body.removeChild(input)
-                      }
-                      input.click()
-                    }}
-                    title="Changer la couleur"
-                    aria-label="Changer la couleur"
-                  >
-                    <Palette size={16} strokeWidth={2} />
-                  </button>
-                  <button
-                    type="button"
-                    className="scene-timeline-action-btn-icon scene-timeline-action-btn-icon-danger"
-                    onClick={() => {
-                      [...selectedIntentionIds].forEach((id) => onRemoveBlock?.(id))
-                      setSelectedIntentionIds(new Set())
-                    }}
-                    title="Supprimer"
-                    aria-label="Supprimer"
-                  >
-                    <Trash2 size={16} strokeWidth={2} />
-                  </button>
+                  )}
                 </>
-              ) : null}
+              )
+            })() : isModuleMode && selectedIntentionIds.size > 0 ? (
+              <>
+                <span className="scene-timeline-selection-label">
+                  {selectedIntentionIds.size} intention{selectedIntentionIds.size > 1 ? 's' : ''} sélectionnée{selectedIntentionIds.size > 1 ? 's' : ''}
+                </span>
+                <button
+                  type="button"
+                  className="scene-timeline-action-btn-icon"
+                  onClick={handleCopyIntention}
+                  disabled={selectedIntentionIds.size !== 1}
+                  title={selectedIntentionIds.size !== 1 ? 'Copier une seule intention' : 'Copier (Ctrl+C)'}
+                  aria-label="Copier"
+                >
+                  <Copy size={16} strokeWidth={2} />
+                </button>
+                <button
+                  type="button"
+                  className="scene-timeline-action-btn-icon"
+                  onClick={() => setIntentionTypeDialog({ blockIds: [...selectedIntentionIds] })}
+                  title="Modifier l'intention"
+                  aria-label="Modifier l'intention"
+                >
+                  <Pencil size={16} strokeWidth={2} />
+                </button>
+                <button
+                  type="button"
+                  className="scene-timeline-action-btn-icon"
+                  onClick={() => {
+                    const input = document.createElement('input')
+                    input.type = 'color'
+                    const block = module?.blocks.find((b) => selectedIntentionIds.has(b.id))
+                    input.value = block?.color || '#5fd68a'
+                    input.style.position = 'absolute'
+                    input.style.opacity = '0'
+                    input.style.pointerEvents = 'none'
+                    document.body.appendChild(input)
+                    input.onchange = () => {
+                      selectedIntentionIds.forEach((id) => onUpdateBlock?.(id, { color: input.value }))
+                      document.body.removeChild(input)
+                    }
+                    input.onblur = () => {
+                      if (document.body.contains(input)) document.body.removeChild(input)
+                    }
+                    input.click()
+                  }}
+                  title="Changer la couleur"
+                  aria-label="Changer la couleur"
+                >
+                  <Palette size={16} strokeWidth={2} />
+                </button>
+                <button
+                  type="button"
+                  className="scene-timeline-action-btn-icon scene-timeline-action-btn-icon-danger"
+                  onClick={() => {
+                    [...selectedIntentionIds].forEach((id) => onRemoveBlock?.(id))
+                    setSelectedIntentionIds(new Set())
+                  }}
+                  title="Supprimer"
+                  aria-label="Supprimer"
+                >
+                  <Trash2 size={16} strokeWidth={2} />
+                </button>
+              </>
+            ) : null}
           </div>
         )}
       </div>
@@ -1077,109 +1077,109 @@ export function SceneTimeline({
             ref={headersScrollRef}
             className="scene-timeline-headers-scroll"
           >
-          <div
-            className="scene-timeline-track-label scene-timeline-track-label-markers"
-            style={{ height: TRACK_HEIGHT }}
-          >
-            <span className="scene-timeline-track-name">Markers</span>
-            <div className="scene-timeline-track-actions">
-              <span className="scene-timeline-track-action scene-timeline-track-action-locked" title="Non modifiable">
-                <Lock size={12} strokeWidth={2} />
-              </span>
-            </div>
-          </div>
-          {!isModuleMode && (
             <div
-              className="scene-timeline-track-label scene-timeline-track-label-cycle"
+              className="scene-timeline-track-label scene-timeline-track-label-markers"
               style={{ height: TRACK_HEIGHT }}
             >
-              <span className="scene-timeline-track-name">Cycle Jour/Nuit</span>
+              <span className="scene-timeline-track-name">Markers</span>
               <div className="scene-timeline-track-actions">
-                <span className="scene-timeline-track-action scene-timeline-track-action-locked" title="Piste non supprimable ni renommable">
+                <span className="scene-timeline-track-action scene-timeline-track-action-locked" title="Non modifiable">
                   <Lock size={12} strokeWidth={2} />
                 </span>
               </div>
             </div>
-          )}
-          {momentTracks.map((track) => (
-            <div
-              key={track.id}
-              className="scene-timeline-track-label"
-              style={{ height: TRACK_HEIGHT }}
-            >
-              <span className="scene-timeline-track-name">{track.name}</span>
-              <div className="scene-timeline-track-actions" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  className="scene-timeline-track-action scene-timeline-track-action-btn"
-                  onClick={() => {
-                    setNameDialog({
-                      title: 'Nom de la piste',
-                      defaultValue: track.name,
-                      onSubmit: (name) => {
-                        if (name) onUpdateMomentTrack?.(track.id, { name })
-                        setNameDialog(null)
-                      },
-                    })
-                  }}
-                  title="Modifier"
-                  aria-label="Modifier"
-                >
-                  <Pencil size={12} strokeWidth={2} />
-                </button>
-                <button
-                  type="button"
-                  className="scene-timeline-track-action scene-timeline-track-action-btn scene-timeline-track-action-danger"
-                  onClick={() => {
-                    if (confirm(`Supprimer la piste "${track.name}" ?`)) onDeleteMomentTrack?.(track.id)
-                  }}
-                  title="Supprimer"
-                  aria-label="Supprimer"
-                >
-                  <Trash2 size={12} strokeWidth={2} />
-                </button>
-              </div>
-            </div>
-          ))}
-          {module && (() => {
-            const outputTracks = buildOutputTracks(module)
-            const labels = module.outputTrackLabels ?? {}
-            return outputTracks.map((t) => {
-              const typeLabel = t.type === 'onoff' ? 'On/Off' : 'PWM'
-              const custom = labels[t.outputIndex]
-              const displayName = custom || `Sortie ${t.outputIndex + 1}`
-              const subline = `Sortie ${t.outputIndex + 1} | ${typeLabel}`
-              return (
-                <div key={t.outputIndex} className="scene-timeline-track-label scene-timeline-track-label-output" style={{ height: TRACK_HEIGHT }}>
-                  <span className="scene-timeline-track-name">
-                    <span className="scene-timeline-track-name-main">{displayName}</span>
-                    <span className="scene-timeline-track-name-sub">{subline}</span>
+            {!isModuleMode && (
+              <div
+                className="scene-timeline-track-label scene-timeline-track-label-cycle"
+                style={{ height: TRACK_HEIGHT }}
+              >
+                <span className="scene-timeline-track-name">Cycle Jour/Nuit</span>
+                <div className="scene-timeline-track-actions">
+                  <span className="scene-timeline-track-action scene-timeline-track-action-locked" title="Piste non supprimable ni renommable">
+                    <Lock size={12} strokeWidth={2} />
                   </span>
-                  {onUpdateTrackLabel && (
-                    <button
-                      type="button"
-                      className="scene-timeline-track-action scene-timeline-track-action-btn"
-                      onClick={() => {
-                        setNameDialog({
-                          title: 'Nom de la sortie',
-                          defaultValue: labels[t.outputIndex] ?? '',
-                          allowEmpty: true,
-                          onSubmit: (value) => {
-                            onUpdateTrackLabel(t.outputIndex, value.trim())
-                            setNameDialog(null)
-                          },
-                        })
-                      }}
-                      title="Modifier"
-                      aria-label={`Modifier le nom de la sortie ${t.outputIndex + 1}`}
-                    >
-                      <Pencil size={12} strokeWidth={2} />
-                    </button>
-                  )}
                 </div>
-              )
-            })
-          })()}
+              </div>
+            )}
+            {momentTracks.map((track) => (
+              <div
+                key={track.id}
+                className="scene-timeline-track-label"
+                style={{ height: TRACK_HEIGHT }}
+              >
+                <span className="scene-timeline-track-name">{track.name}</span>
+                <div className="scene-timeline-track-actions" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    className="scene-timeline-track-action scene-timeline-track-action-btn"
+                    onClick={() => {
+                      setNameDialog({
+                        title: 'Nom de la piste',
+                        defaultValue: track.name,
+                        onSubmit: (name) => {
+                          if (name) onUpdateMomentTrack?.(track.id, { name })
+                          setNameDialog(null)
+                        },
+                      })
+                    }}
+                    title="Modifier"
+                    aria-label="Modifier"
+                  >
+                    <Pencil size={12} strokeWidth={2} />
+                  </button>
+                  <button
+                    type="button"
+                    className="scene-timeline-track-action scene-timeline-track-action-btn scene-timeline-track-action-danger"
+                    onClick={() => {
+                      if (confirm(`Supprimer la piste "${track.name}" ?`)) onDeleteMomentTrack?.(track.id)
+                    }}
+                    title="Supprimer"
+                    aria-label="Supprimer"
+                  >
+                    <Trash2 size={12} strokeWidth={2} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {module && (() => {
+              const outputTracks = buildOutputTracks(module)
+              const labels = module.outputTrackLabels ?? {}
+              return outputTracks.map((t) => {
+                const typeLabel = t.type === 'onoff' ? 'On/Off' : 'PWM'
+                const custom = labels[t.outputIndex]
+                const displayName = custom || `Sortie ${t.outputIndex + 1}`
+                const subline = `Sortie ${t.outputIndex + 1} | ${typeLabel}`
+                return (
+                  <div key={t.outputIndex} className="scene-timeline-track-label scene-timeline-track-label-output" style={{ height: TRACK_HEIGHT }}>
+                    <span className="scene-timeline-track-name">
+                      <span className="scene-timeline-track-name-main">{displayName}</span>
+                      <span className="scene-timeline-track-name-sub">{subline}</span>
+                    </span>
+                    {onUpdateTrackLabel && (
+                      <button
+                        type="button"
+                        className="scene-timeline-track-action scene-timeline-track-action-btn"
+                        onClick={() => {
+                          setNameDialog({
+                            title: 'Nom de la sortie',
+                            defaultValue: labels[t.outputIndex] ?? '',
+                            allowEmpty: true,
+                            onSubmit: (value) => {
+                              onUpdateTrackLabel(t.outputIndex, value.trim())
+                              setNameDialog(null)
+                            },
+                          })
+                        }}
+                        title="Modifier"
+                        aria-label={`Modifier le nom de la sortie ${t.outputIndex + 1}`}
+                      >
+                        <Pencil size={12} strokeWidth={2} />
+                      </button>
+                    )}
+                  </div>
+                )
+              })
+            })()}
           </div>
         </div>
 
@@ -1226,281 +1226,281 @@ export function SceneTimeline({
               </div>
             </div>
 
-          <div className="scene-timeline-grid scene-timeline-grid-simulated" aria-hidden="true">
-            {simGridTicks.map((t) => (
-              <div
-                key={`sim-${t.ms}`}
-                className={`scene-timeline-grid-line scene-timeline-grid-line-simulated ${t.major ? 'scene-timeline-grid-line-simulated-major' : ''}`}
-                style={{ left: TIMELINE_PADDING_X + msToPx(t.ms, pxPerMs) }}
-              />
-            ))}
-          </div>
-          <div className="scene-timeline-bookmark-guides" aria-hidden="true">
-            {bookmarks.map((bm) => (
-              <div
-                key={bm.id}
-                className="scene-timeline-bookmark-guide"
-                style={{
-                  left: TIMELINE_PADDING_X + msToPx(bm.positionMs, pxPerMs),
-                  borderLeftColor: bm.color || 'var(--accent-primary)',
-                }}
-              />
-            ))}
-          </div>
-          {isModuleMode && showCycleBackground && (
-            <div className="scene-timeline-cycle-background" aria-hidden="true">
-              {cycleTrack.moments.map((m) => (
+            <div className="scene-timeline-grid scene-timeline-grid-simulated" aria-hidden="true">
+              {simGridTicks.map((t) => (
                 <div
-                  key={m.id}
-                  className="scene-timeline-cycle-background-block"
+                  key={`sim-${t.ms}`}
+                  className={`scene-timeline-grid-line scene-timeline-grid-line-simulated ${t.major ? 'scene-timeline-grid-line-simulated-major' : ''}`}
+                  style={{ left: TIMELINE_PADDING_X + msToPx(t.ms, pxPerMs) }}
+                />
+              ))}
+            </div>
+            <div className="scene-timeline-bookmark-guides" aria-hidden="true">
+              {bookmarks.map((bm) => (
+                <div
+                  key={bm.id}
+                  className="scene-timeline-bookmark-guide"
                   style={{
-                    left: TIMELINE_PADDING_X + msToPx(m.startMs, pxPerMs),
-                    width: Math.max(2, msToPx(m.endMs - m.startMs, pxPerMs)),
-                    backgroundColor: m.color ?? 'var(--bg-surface)',
+                    left: TIMELINE_PADDING_X + msToPx(bm.positionMs, pxPerMs),
+                    borderLeftColor: bm.color || 'var(--accent-primary)',
                   }}
                 />
               ))}
             </div>
-          )}
-          <div className="scene-timeline-tracks">
-            <div
-              className="scene-timeline-track scene-timeline-track-markers"
-              style={{ width: totalWidthPx, height: TRACK_HEIGHT }}
-              onContextMenu={handleMarkersTrackClick}
-            >
-              {(() => {
-                const CLUSTER_PX = 28
-                const sorted = [...bookmarks].sort((a, b) => a.positionMs - b.positionMs)
-                const clusters: { bm: Bookmark; slotIndex: number; slotCount: number }[] = []
-                let cluster: Bookmark[] = []
-                let clusterStartPx = 0
-                for (const bm of sorted) {
-                  const px = msToPx(bm.positionMs, pxPerMs)
-                  if (cluster.length === 0 || px - clusterStartPx < CLUSTER_PX) {
-                    cluster.push(bm)
-                    if (cluster.length === 1) clusterStartPx = px
-                  } else {
+            {isModuleMode && showCycleBackground && (
+              <div className="scene-timeline-cycle-background" aria-hidden="true">
+                {cycleTrack.moments.map((m) => (
+                  <div
+                    key={m.id}
+                    className="scene-timeline-cycle-background-block"
+                    style={{
+                      left: TIMELINE_PADDING_X + msToPx(m.startMs, pxPerMs),
+                      width: Math.max(2, msToPx(m.endMs - m.startMs, pxPerMs)),
+                      backgroundColor: m.color ?? 'var(--bg-surface)',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+            <div className="scene-timeline-tracks">
+              <div
+                className="scene-timeline-track scene-timeline-track-markers"
+                style={{ width: totalWidthPx, height: TRACK_HEIGHT }}
+                onContextMenu={handleMarkersTrackClick}
+              >
+                {(() => {
+                  const CLUSTER_PX = 28
+                  const sorted = [...bookmarks].sort((a, b) => a.positionMs - b.positionMs)
+                  const clusters: { bm: Bookmark; slotIndex: number; slotCount: number }[] = []
+                  let cluster: Bookmark[] = []
+                  let clusterStartPx = 0
+                  for (const bm of sorted) {
+                    const px = msToPx(bm.positionMs, pxPerMs)
+                    if (cluster.length === 0 || px - clusterStartPx < CLUSTER_PX) {
+                      cluster.push(bm)
+                      if (cluster.length === 1) clusterStartPx = px
+                    } else {
+                      const count = Math.min(cluster.length, 3)
+                      cluster.forEach((c, i) =>
+                        clusters.push({ bm: c, slotIndex: Math.min(i, count - 1), slotCount: count })
+                      )
+                      cluster = [bm]
+                      clusterStartPx = px
+                    }
+                  }
+                  if (cluster.length > 0) {
                     const count = Math.min(cluster.length, 3)
                     cluster.forEach((c, i) =>
                       clusters.push({ bm: c, slotIndex: Math.min(i, count - 1), slotCount: count })
                     )
-                    cluster = [bm]
-                    clusterStartPx = px
                   }
-                }
-                if (cluster.length > 0) {
-                  const count = Math.min(cluster.length, 3)
-                  cluster.forEach((c, i) =>
-                    clusters.push({ bm: c, slotIndex: Math.min(i, count - 1), slotCount: count })
-                  )
-                }
-                const updateBookmark = isModuleMode
-                  ? (id: string, updates: { positionMs?: number }) => onUpdateModuleBookmark?.(id, updates)
-                  : (id: string, updates: { positionMs?: number }) => onUpdateBookmark?.(id, updates)
-                const isEditable = (bm: Bookmark) =>
-                  !isModuleMode || moduleBookmarks.some((mb) => mb.id === bm.id)
-                return clusters.map(({ bm, slotIndex, slotCount }) => (
-                  <BookmarkMarker
-                    key={bm.id}
-                    bookmark={bm}
-                    slotIndex={slotIndex}
-                    slotCount={slotCount}
-                    staggerOffsetPx={slotCount > 1 ? slotIndex * 8 : 0}
-                    trackHeight={TRACK_HEIGHT}
-                    pxPerMs={pxPerMs}
-                    paddingX={TIMELINE_PADDING_X}
-                    durationMs={durationMs}
-                    selected={selectedBookmarkId === bm.id}
-                    editable={isEditable(bm)}
-                    onSelect={(e) => {
-                      e.stopPropagation()
-                      setSelectedBookmarkId(bm.id)
-                      setSelectedMoment(null)
-                    }}
-                    onUpdatePosition={isEditable(bm) ? (positionMs) => updateBookmark(bm.id, { positionMs }) : undefined}
-                    onContextMenu={
-                      isEditable(bm)
-                        ? (e) => {
+                  const updateBookmark = isModuleMode
+                    ? (id: string, updates: { positionMs?: number }) => onUpdateModuleBookmark?.(id, updates)
+                    : (id: string, updates: { positionMs?: number }) => onUpdateBookmark?.(id, updates)
+                  const isEditable = (bm: Bookmark) =>
+                    !isModuleMode || moduleBookmarks.some((mb) => mb.id === bm.id)
+                  return clusters.map(({ bm, slotIndex, slotCount }) => (
+                    <BookmarkMarker
+                      key={bm.id}
+                      bookmark={bm}
+                      slotIndex={slotIndex}
+                      slotCount={slotCount}
+                      staggerOffsetPx={slotCount > 1 ? slotIndex * 8 : 0}
+                      trackHeight={TRACK_HEIGHT}
+                      pxPerMs={pxPerMs}
+                      paddingX={TIMELINE_PADDING_X}
+                      durationMs={durationMs}
+                      selected={selectedBookmarkId === bm.id}
+                      editable={isEditable(bm)}
+                      onSelect={(e) => {
+                        e.stopPropagation()
+                        setSelectedBookmarkId(bm.id)
+                        setSelectedMoment(null)
+                      }}
+                      onUpdatePosition={isEditable(bm) ? (positionMs) => updateBookmark(bm.id, { positionMs }) : undefined}
+                      onContextMenu={
+                        isEditable(bm)
+                          ? (e) => {
                             e.preventDefault()
                             e.stopPropagation()
                             setContextMenu({ x: e.clientX, y: e.clientY, type: 'bookmark', id: bm.id })
                             setSelectedBookmarkId(bm.id)
                             setSelectedMoment(null)
                           }
-                        : undefined
-                    }
-                    clientXToMs={clientXToMs}
-                    snapToGrid={snapToGrid}
-                  />
-                ))
-              })()}
-            </div>
-            {!isModuleMode && (
-              <MomentTrackRow
-                key={CYCLE_TRACK_ID}
-                track={cycleTrack}
-                pxPerMs={pxPerMs}
-                paddingX={TIMELINE_PADDING_X}
-                totalWidthPx={totalWidthPx}
-                trackHeight={TRACK_HEIGHT}
-                durationMs={durationMs}
-                selectedMomentId={selectedMoment?.trackId === CYCLE_TRACK_ID ? selectedMoment.momentId : null}
-                editable={true}
-                onTrackClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedMoment(null); }}
-                onSelect={(momentId, e) => {
-                  e.stopPropagation()
-                  setSelectedMoment({ trackId: CYCLE_TRACK_ID, momentId })
-                  setSelectedBookmarkId(null)
-                }}
-                onUpdate={(momentId, updates) => {
-                  if (!onUpdateDayNight) return
-                  const dawnMs = (dayNightDawnSimulatedH / 24) * durationMs
-                  const duskMs = (dayNightDuskSimulatedH / 24) * durationMs
-                  let newDawn = dawnMs
-                  let newDusk = duskMs
-                  if (momentId === 'dn-0' && updates.endMs !== undefined) newDawn = updates.endMs
-                  else if (momentId === 'dn-1') {
-                    if (updates.startMs !== undefined) newDawn = updates.startMs
-                    if (updates.endMs !== undefined) newDusk = updates.endMs
-                  } else if (momentId === 'dn-2' && updates.startMs !== undefined) newDusk = updates.startMs
-                  const minBlockMs = durationMs / 24
-                  newDawn = Math.max(0, Math.min(newDusk - minBlockMs, newDawn))
-                  newDusk = Math.max(newDawn + minBlockMs, Math.min(durationMs, newDusk))
-                  onUpdateDayNight((newDawn / durationMs) * 24, (newDusk / durationMs) * 24)
-                }}
-                onContextMenu={(momentId, e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setContextMenu({ x: e.clientX, y: e.clientY, type: 'moment', trackId: CYCLE_TRACK_ID, momentId })
-                  setSelectedMoment({ trackId: CYCLE_TRACK_ID, momentId })
-                  setSelectedBookmarkId(null)
-                }}
-                clientXToMs={clientXToMs}
-                snapToGrid={snapToGrid}
-              />
-            )}
-            {momentTracks.map((track) => (
-              <MomentTrackRow
-                key={track.id}
-                track={track}
-                pxPerMs={pxPerMs}
-                paddingX={TIMELINE_PADDING_X}
-                totalWidthPx={totalWidthPx}
-                trackHeight={TRACK_HEIGHT}
-                durationMs={durationMs}
-                selectedMomentId={selectedMoment?.trackId === track.id ? selectedMoment.momentId : null}
-                editable={!isModuleMode}
-                onTrackClick={(e) => {
-                  if (onCreateMoment && !isModuleMode && track.id) {
+                          : undefined
+                      }
+                      clientXToMs={clientXToMs}
+                      snapToGrid={snapToGrid}
+                    />
+                  ))
+                })()}
+              </div>
+              {!isModuleMode && (
+                <MomentTrackRow
+                  key={CYCLE_TRACK_ID}
+                  track={cycleTrack}
+                  pxPerMs={pxPerMs}
+                  paddingX={TIMELINE_PADDING_X}
+                  totalWidthPx={totalWidthPx}
+                  trackHeight={TRACK_HEIGHT}
+                  durationMs={durationMs}
+                  selectedMomentId={selectedMoment?.trackId === CYCLE_TRACK_ID ? selectedMoment.momentId : null}
+                  editable={true}
+                  onTrackClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedMoment(null); }}
+                  onSelect={(momentId, e) => {
+                    e.stopPropagation()
+                    setSelectedMoment({ trackId: CYCLE_TRACK_ID, momentId })
+                    setSelectedBookmarkId(null)
+                  }}
+                  onUpdate={(momentId, updates) => {
+                    if (!onUpdateDayNight) return
+                    const dawnMs = (dayNightDawnSimulatedH / 24) * durationMs
+                    const duskMs = (dayNightDuskSimulatedH / 24) * durationMs
+                    let newDawn = dawnMs
+                    let newDusk = duskMs
+                    if (momentId === 'dn-0' && updates.endMs !== undefined) newDawn = updates.endMs
+                    else if (momentId === 'dn-1') {
+                      if (updates.startMs !== undefined) newDawn = updates.startMs
+                      if (updates.endMs !== undefined) newDusk = updates.endMs
+                    } else if (momentId === 'dn-2' && updates.startMs !== undefined) newDusk = updates.startMs
+                    const minBlockMs = durationMs / 24
+                    newDawn = Math.max(0, Math.min(newDusk - minBlockMs, newDawn))
+                    newDusk = Math.max(newDawn + minBlockMs, Math.min(durationMs, newDusk))
+                    onUpdateDayNight((newDawn / durationMs) * 24, (newDusk / durationMs) * 24)
+                  }}
+                  onContextMenu={(momentId, e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    const ms = snapToFinestGrid(clientXToMs(e.clientX), durationMs)
-                    setTrackAddMenu({ x: e.clientX, y: e.clientY, type: 'moment', trackId: track.id, positionMs: ms })
-                  }
-                }}
-                onSelect={(momentId, e) => {
-                  e.stopPropagation()
-                  setSelectedMoment({ trackId: track.id, momentId })
-                  setSelectedBookmarkId(null)
-                }}
-                onUpdate={(momentId, updates) => onUpdateMoment?.(track.id, momentId, updates)}
-                onContextMenu={(momentId, e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setContextMenu({ x: e.clientX, y: e.clientY, type: 'moment', trackId: track.id, momentId })
-                  setSelectedMoment({ trackId: track.id, momentId })
-                  setSelectedBookmarkId(null)
-                }}
-                clientXToMs={clientXToMs}
-                snapToGrid={snapToGrid}
-              />
-            ))}
-            {module &&
-              buildOutputTracks(module).map((t) => {
-                const trackBlocks = module.blocks.filter((b) => (b.outputIndex ?? 0) === t.outputIndex)
-                return (
-                  <div
-                    key={t.outputIndex}
-                    className="scene-timeline-track scene-timeline-track-output"
-                    style={{ width: totalWidthPx, height: TRACK_HEIGHT }}
-                    onContextMenu={(e) => {
-                      if (onAddBlock) {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        const ms = snapToFinestGrid(clientXToMs(e.clientX), durationMs)
-                        setTrackAddMenu({ x: e.clientX, y: e.clientY, type: 'output', outputIndex: t.outputIndex, positionMs: ms, trackType: t.type })
-                      }
-                    }}
-                  >
-                    <div className="scene-timeline-track-blocks">
-                      {trackBlocks.map((block) => (
-                        <IntentionBlock
-                          key={block.id}
-                          block={block}
-                          otherBlocksOnTrack={trackBlocks}
-                          pxPerMs={pxPerMs}
-                          paddingX={TIMELINE_PADDING_X}
-                          durationMs={durationMs}
-                          selected={selectedIntentionIds.has(block.id)}
-                          onSelect={(addToSelection) => {
-                            setSelectedIntentionIds((prev) => {
-                              const next = new Set(prev)
-                              if (addToSelection) {
-                                if (next.has(block.id)) next.delete(block.id)
-                                else next.add(block.id)
+                    setContextMenu({ x: e.clientX, y: e.clientY, type: 'moment', trackId: CYCLE_TRACK_ID, momentId })
+                    setSelectedMoment({ trackId: CYCLE_TRACK_ID, momentId })
+                    setSelectedBookmarkId(null)
+                  }}
+                  clientXToMs={clientXToMs}
+                  snapToGrid={snapToGrid}
+                />
+              )}
+              {momentTracks.map((track) => (
+                <MomentTrackRow
+                  key={track.id}
+                  track={track}
+                  pxPerMs={pxPerMs}
+                  paddingX={TIMELINE_PADDING_X}
+                  totalWidthPx={totalWidthPx}
+                  trackHeight={TRACK_HEIGHT}
+                  durationMs={durationMs}
+                  selectedMomentId={selectedMoment?.trackId === track.id ? selectedMoment.momentId : null}
+                  editable={!isModuleMode}
+                  onTrackClick={(e) => {
+                    if (onCreateMoment && !isModuleMode && track.id) {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      const ms = snapToFinestGrid(clientXToMs(e.clientX), durationMs)
+                      setTrackAddMenu({ x: e.clientX, y: e.clientY, type: 'moment', trackId: track.id, positionMs: ms })
+                    }
+                  }}
+                  onSelect={(momentId, e) => {
+                    e.stopPropagation()
+                    setSelectedMoment({ trackId: track.id, momentId })
+                    setSelectedBookmarkId(null)
+                  }}
+                  onUpdate={(momentId, updates) => onUpdateMoment?.(track.id, momentId, updates)}
+                  onContextMenu={(momentId, e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setContextMenu({ x: e.clientX, y: e.clientY, type: 'moment', trackId: track.id, momentId })
+                    setSelectedMoment({ trackId: track.id, momentId })
+                    setSelectedBookmarkId(null)
+                  }}
+                  clientXToMs={clientXToMs}
+                  snapToGrid={snapToGrid}
+                />
+              ))}
+              {module &&
+                buildOutputTracks(module).map((t) => {
+                  const trackBlocks = module.blocks.filter((b) => (b.outputIndex ?? 0) === t.outputIndex)
+                  return (
+                    <div
+                      key={t.outputIndex}
+                      className="scene-timeline-track scene-timeline-track-output"
+                      style={{ width: totalWidthPx, height: TRACK_HEIGHT }}
+                      onContextMenu={(e) => {
+                        if (onAddBlock) {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          const ms = snapToFinestGrid(clientXToMs(e.clientX), durationMs)
+                          setTrackAddMenu({ x: e.clientX, y: e.clientY, type: 'output', outputIndex: t.outputIndex, positionMs: ms, trackType: t.type })
+                        }
+                      }}
+                    >
+                      <div className="scene-timeline-track-blocks">
+                        {trackBlocks.map((block) => (
+                          <IntentionBlock
+                            key={block.id}
+                            block={block}
+                            otherBlocksOnTrack={trackBlocks}
+                            pxPerMs={pxPerMs}
+                            paddingX={TIMELINE_PADDING_X}
+                            durationMs={durationMs}
+                            selected={selectedIntentionIds.has(block.id)}
+                            onSelect={(addToSelection) => {
+                              setSelectedIntentionIds((prev) => {
+                                const next = new Set(prev)
+                                if (addToSelection) {
+                                  if (next.has(block.id)) next.delete(block.id)
+                                  else next.add(block.id)
+                                } else {
+                                  return next.has(block.id) && next.size === 1 ? new Set() : new Set([block.id])
+                                }
+                                return next
+                              })
+                            }}
+                            onUpdate={(updates) => {
+                              if (updates.outputIndex !== undefined && updates.outputIndex !== (block.outputIndex ?? 0)) {
+                                const targetBlocks = module.blocks.filter((b) => (b.outputIndex ?? 0) === updates.outputIndex && b.id !== block.id)
+                                const { startMs } = findNonOverlappingSlot(targetBlocks, updates.startMs ?? block.startMs, block.durationMs, durationMs)
+                                onUpdateBlock?.(block.id, { startMs, outputIndex: updates.outputIndex })
                               } else {
-                                return next.has(block.id) && next.size === 1 ? new Set() : new Set([block.id])
+                                onUpdateBlock?.(block.id, updates)
                               }
-                              return next
-                            })
-                          }}
-                          onUpdate={(updates) => {
-                            if (updates.outputIndex !== undefined && updates.outputIndex !== (block.outputIndex ?? 0)) {
-                              const targetBlocks = module.blocks.filter((b) => (b.outputIndex ?? 0) === updates.outputIndex && b.id !== block.id)
-                              const { startMs } = findNonOverlappingSlot(targetBlocks, updates.startMs ?? block.startMs, block.durationMs, durationMs)
-                              onUpdateBlock?.(block.id, { startMs, outputIndex: updates.outputIndex })
-                            } else {
-                              onUpdateBlock?.(block.id, updates)
-                            }
-                          }}
-                          currentOutputIndex={t.outputIndex}
-                          currentTrackType={t.type}
-                          outputTracks={outputTracks}
-                          getOutputTrackAtClientY={getOutputTrackAtClientY}
-                          onDragStart={(b) => setIntentionDragGhost({ block: b, trackIndex: outputTracks.findIndex((ot) => ot.outputIndex === t.outputIndex), outputIndex: t.outputIndex, ms: b.startMs, trackType: t.type })}
-                          onDragMove={(clientX, clientY, ms) => {
-                            const track = getOutputTrackAtClientY(clientY)
-                            const newMs = snapToFinestGrid(ms, durationMs)
-                            setIntentionDragGhost((prev) => {
-                              if (!prev || prev.block.id !== block.id) return prev
-                              if (track && track.type === t.type) {
-                                const trackIndex = outputTracks.findIndex((ot) => ot.outputIndex === track.outputIndex)
-                                return { ...prev, trackIndex, outputIndex: track.outputIndex, ms: newMs, trackType: track.type }
-                              }
-                              return { ...prev, ms: newMs }
-                            })
-                          }}
-                          onDragEnd={() => setIntentionDragGhost(null)}
-                          isDragging={intentionDragGhost?.block.id === block.id}
-                          onContextMenu={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            setSelectedIntentionIds((prev) => {
-                              const next = new Set(prev)
-                              if (!next.has(block.id)) next.add(block.id)
-                              return next
-                            })
-                            setContextMenu({ x: e.clientX, y: e.clientY, type: 'intention', blockIds: selectedIntentionIds.has(block.id) ? [...selectedIntentionIds] : [...selectedIntentionIds, block.id] })
-                          }}
-                          clientXToMs={clientXToMs}
-                          snapToGrid={snapToGrid}
-                        />
-                      ))}
+                            }}
+                            currentOutputIndex={t.outputIndex}
+                            currentTrackType={t.type}
+                            outputTracks={outputTracks}
+                            getOutputTrackAtClientY={getOutputTrackAtClientY}
+                            onDragStart={(b) => setIntentionDragGhost({ block: b, trackIndex: outputTracks.findIndex((ot) => ot.outputIndex === t.outputIndex), outputIndex: t.outputIndex, ms: b.startMs, trackType: t.type })}
+                            onDragMove={(clientX, clientY, ms) => {
+                              const track = getOutputTrackAtClientY(clientY)
+                              const newMs = snapToFinestGrid(ms, durationMs)
+                              setIntentionDragGhost((prev) => {
+                                if (!prev || prev.block.id !== block.id) return prev
+                                if (track && track.type === t.type) {
+                                  const trackIndex = outputTracks.findIndex((ot) => ot.outputIndex === track.outputIndex)
+                                  return { ...prev, trackIndex, outputIndex: track.outputIndex, ms: newMs, trackType: track.type }
+                                }
+                                return { ...prev, ms: newMs }
+                              })
+                            }}
+                            onDragEnd={() => setIntentionDragGhost(null)}
+                            isDragging={intentionDragGhost?.block.id === block.id}
+                            onContextMenu={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setSelectedIntentionIds((prev) => {
+                                const next = new Set(prev)
+                                if (!next.has(block.id)) next.add(block.id)
+                                return next
+                              })
+                              setContextMenu({ x: e.clientX, y: e.clientY, type: 'intention', blockIds: selectedIntentionIds.has(block.id) ? [...selectedIntentionIds] : [...selectedIntentionIds, block.id] })
+                            }}
+                            clientXToMs={clientXToMs}
+                            snapToGrid={snapToGrid}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
-          </div>
+                  )
+                })}
+            </div>
             {pasteMode && pasteGhost && clipboardIntentionRef.current && (
               <div
                 className={`scene-timeline-paste-ghost ${pasteGhost.valid ? '' : 'scene-timeline-paste-ghost-invalid'}`}
@@ -1544,10 +1544,6 @@ export function SceneTimeline({
           </div>
         </div>
       </div>
-
-      <p className="scene-timeline-legend">
-        Temps projet (min) | Jour simulé (24h). {DURATION_MIN}-{DURATION_MAX} min = une journée.
-      </p>
 
       {headerAddMenu && onCreateMomentTrack && createPortal(
         <div
@@ -1629,7 +1625,7 @@ export function SceneTimeline({
           onClose={() => setContextMenu(null)}
           onDeleteBookmark={(id) => {
             const isMod = moduleBookmarks.some((b) => b.id === id)
-            ;(isMod ? onDeleteModuleBookmark : onDeleteBookmark)?.(id)
+              ; (isMod ? onDeleteModuleBookmark : onDeleteBookmark)?.(id)
             setSelectedBookmarkId(null)
             setContextMenu(null)
           }}
@@ -1640,7 +1636,7 @@ export function SceneTimeline({
           }}
           onUpdateBookmark={(id, updates) => {
             const isMod = moduleBookmarks.some((b) => b.id === id)
-            ;(isMod ? onUpdateModuleBookmark : onUpdateBookmark)?.(id, updates)
+              ; (isMod ? onUpdateModuleBookmark : onUpdateBookmark)?.(id, updates)
           }}
           onUpdateMoment={(trackId, momentId, updates) => onUpdateMoment?.(trackId, momentId, updates)}
           onRemoveBlock={onRemoveBlock}

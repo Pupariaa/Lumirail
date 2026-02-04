@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { Project, Module, StoredModuleInfo } from '../data'
 import { isValidModuleSerial } from '../serial'
 
@@ -115,7 +116,7 @@ export function AddModuleDialog({
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div
       className="add-module-dialog-backdrop"
       onClick={onClose}
@@ -259,6 +260,7 @@ export function AddModuleDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

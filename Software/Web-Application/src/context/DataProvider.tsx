@@ -181,6 +181,7 @@ export function DataProvider({
         dayNightNightColor?: string
         dayNightDayColor?: string
         dayNightLabels?: { night1?: string; day?: string; night2?: string }
+        plateau?: import('../data').PlateauState
       }
     ) => {
       const updated = persistUpdateProject(adapter, userId, projectId, updates)

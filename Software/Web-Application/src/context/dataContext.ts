@@ -34,6 +34,7 @@ export interface DataContextValue {
       dayNightNightColor?: string
       dayNightDayColor?: string
       dayNightLabels?: { night1?: string; day?: string; night2?: string }
+      plateau?: import('../data').PlateauState
     }
   ) => Project | null
   deleteProject: (projectId: string) => boolean

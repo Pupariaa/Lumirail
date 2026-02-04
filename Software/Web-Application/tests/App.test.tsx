@@ -147,7 +147,7 @@ describe('App', () => {
     })
 
     await user.click(screen.getByRole('link', { name: moduleSerial }))
-    expect(await screen.findByRole('heading', { name: moduleSerial })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: new RegExp(moduleSerial) })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /timeline du module/i })).toBeInTheDocument()
 
     expect(screen.getByRole('button', { name: /télécharger la composition/i })).toBeInTheDocument()
@@ -200,6 +200,49 @@ describe('App', () => {
     expect(stored.projects).toHaveLength(1)
     expect(stored.projects[0].name).toBe('Test Project')
     expect(stored.projects[0].durationMinutes).toBe(15)
+  })
+
+  it('shows Plateau tab after Timeline on project page', async () => {
+    const user = userEvent.setup()
+    const sessionUser = {
+      id: 'test-id',
+      email: 'test@example.com',
+      createdAt: new Date().toISOString(),
+    }
+    localStorage.setItem('lumirail_session', JSON.stringify(sessionUser))
+    const ws = { id: 'ws1', name: 'My Workspace', ownerId: 'test-id', createdAt: new Date().toISOString() }
+    const proj = createProject({ id: 'proj1', workspaceId: 'ws1' })
+    localStorage.setItem(
+      'lumirail_userdata_test-id',
+      JSON.stringify({
+        _version: 5,
+        workspaces: [ws],
+        projects: [proj],
+      })
+    )
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /Lumirail Studio/i })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('link', { name: 'My Workspace' }))
+    await user.click(screen.getByRole('link', { name: 'My Project' }))
+
+    const tabs = screen.getAllByRole('tab')
+    const labels = tabs.map((t) => t.textContent ?? '')
+    const timelineIdx = labels.indexOf('Timeline Principale')
+    const plateauIdx = labels.indexOf('Plateau')
+    expect(timelineIdx).toBeGreaterThanOrEqual(0)
+    expect(plateauIdx).toBe(timelineIdx + 1)
+
+    await user.click(screen.getByRole('tab', { name: 'Plateau' }))
+    expect(screen.getByRole('group', { name: /configuration du plateau/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /créer le plateau/i }))
+    expect(screen.getByRole('group', { name: /outils plateau/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /réglages du plateau/i })).toBeInTheDocument()
   })
 
   it('clamps project duration to 2-30 min range', async () => {

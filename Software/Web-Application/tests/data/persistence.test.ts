@@ -189,6 +189,22 @@ describe('data persistence - projects', () => {
     expect(updated?.name).toBe('Renamed')
   })
 
+  it('persists plateau state on project', () => {
+    const adapter = createMemoryAdapter()
+    const ws = createWorkspace(adapter, 'user-1', 'Workspace')
+    const proj = createProject(adapter, 'user-1', ws.id, 'Project')
+    const plateau = {
+      board: { width: 120, height: 60, unit: 'cm' },
+      canvasJson: { version: 'test', objects: [] },
+    }
+
+    const updated = updateProject(adapter, 'user-1', proj!.id, { plateau })
+    expect(updated?.plateau).toEqual(plateau)
+
+    const data = loadUserData(adapter, 'user-1')
+    expect(data.projects[0].plateau).toEqual(plateau)
+  })
+
   it('moves project to different workspace', () => {
     const adapter = createMemoryAdapter()
     const ws1 = createWorkspace(adapter, 'user-1', 'Workspace 1')

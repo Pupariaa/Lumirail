@@ -5,6 +5,19 @@ export interface Workspace {
   createdAt: string
 }
 
+export type PlateauUnit = 'mm' | 'cm' | 'm'
+
+export interface PlateauBoard {
+  width: number
+  height: number
+  unit: PlateauUnit
+}
+
+export interface PlateauState {
+  board: PlateauBoard
+  canvasJson?: unknown
+}
+
 export interface OutputAddress {
   cardId: string
   outputIndex: number
@@ -100,6 +113,7 @@ export interface Project {
   dayNightNightColor?: string
   dayNightDayColor?: string
   dayNightLabels?: { night1?: string; day?: string; night2?: string }
+  plateau?: PlateauState
   modules: Module[]
   cards: Card[]
   createdAt: string

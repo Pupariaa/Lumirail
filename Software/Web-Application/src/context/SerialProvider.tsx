@@ -50,7 +50,7 @@ export function SerialProvider({ children }: { children: ReactNode }) {
         const sn = (info.board['SN'] ?? '').trim()
         setConnectedModuleSn(sn || null)
         setConnectedModuleInfo(info)
-      }).catch(() => {})
+      }).catch(() => { })
     })
   }, [])
 

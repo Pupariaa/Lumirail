@@ -3,10 +3,18 @@ import { Link, useParams, useLocation } from 'react-router-dom'
 import { useData } from '../context/useData'
 import { SerialContext } from '../context/serialContext'
 import { AddModuleDialog } from './AddModuleDialog'
+import { Plus, Plug } from 'lucide-react'
 import type { Module } from '../data'
 
 function getModuleSn(m: Module): string {
   return (m.storedModuleInfo?.board?.['SN'] ?? m.name ?? '').trim()
+}
+
+function formatSidebarDate(iso: string | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 
 export function AppSidebar() {
@@ -28,11 +36,10 @@ export function AppSidebar() {
   const projectId = params.projectId ?? projectPathMatch?.[2] ?? ''
   const moduleId = params.moduleId ?? modulePathMatch?.[1] ?? ''
   const [addModuleDialogOpen, setAddModuleDialogOpen] = useState(false)
-  const [addModuleProjectId, setAddModuleProjectId] = useState<string>(projectId)
   const [addWithDetectedModule, setAddWithDetectedModule] = useState(false)
 
   useEffect(() => {
-    if (projectId) setAddModuleProjectId(projectId)
+    if (!projectId) setAddWithDetectedModule(false)
   }, [projectId])
 
   const isHome = pathname === '/'
@@ -49,10 +56,8 @@ export function AppSidebar() {
   const digiKeyConnected = serialState === 'connected'
   const canScanDigiKey = isSupported && digiKeyConnected
 
-  const targetProjectId = isProjectContext ? projectId : (addModuleProjectId || projects[0]?.id || '')
-
-  const projectsForDialog = project ? [project] : (workspace ? projects : [])
-  const defaultProjectIdForDialog = projectId || (projectsForDialog[0]?.id ?? '')
+  const projectsForDialog = project ? [project] : []
+  const defaultProjectIdForDialog = project?.id ?? ''
   const detectedModuleNotInProject = connectedModuleSn && connectedModuleInfo && modulePresent
     ? !modules.some((m) => getModuleSn(m) === connectedModuleSn)
     : false
@@ -60,50 +65,27 @@ export function AppSidebar() {
     ? { board: connectedModuleInfo.board, config: connectedModuleInfo.config, s1Meta: connectedModuleInfo.s1Meta, s2Meta: connectedModuleInfo.s2Meta }
     : undefined
 
-  const addModuleButton = (
-    <button
-      type="button"
-      className="btn btn-primary btn-sm sidebar-add-module-btn"
-      onClick={() => {
-        setAddWithDetectedModule(false)
-        setAddModuleDialogOpen(true)
-      }}
-      disabled={!targetProjectId}
-    >
-      Ajouter un module
-    </button>
-  )
-
-  const workspaceLinkActive = isWorkspacePage
-  const projectLinkActive = Boolean(isProjectContext && !moduleId)
-
   return (
     <aside className="app-sidebar" aria-label="Sidebar">
       <nav aria-label="Navigation">
-        <section className="sidebar-section">
-          <h3 className="sidebar-section-title">Navigation</h3>
-          <ul className="sidebar-list">
-            <li>
-              <Link to="/" className={`sidebar-link ${isHome ? 'sidebar-link-active' : ''}`}>
-                Espaces de travail
-              </Link>
-            </li>
-            {workspace && (
-              <li>
-                <Link to={`/workspace/${workspace.id}`} className={`sidebar-link ${workspaceLinkActive ? 'sidebar-link-active' : ''}`}>
-                  {workspace.name}
-                </Link>
-              </li>
+        {isHome && (
+          <section className="sidebar-section">
+            <h3 className="sidebar-section-title">Espaces de travail</h3>
+            {data.workspaces.length === 0 ? (
+              <p className="sidebar-empty">Aucun espace de travail</p>
+            ) : (
+              <ul className="sidebar-list">
+                {data.workspaces.map((w) => (
+                  <li key={w.id}>
+                    <Link to={`/workspace/${w.id}`} className="sidebar-link">
+                      {w.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             )}
-            {workspace && project && (
-              <li>
-                <Link to={`/workspace/${workspace.id}/project/${project.id}`} className={`sidebar-link ${projectLinkActive ? 'sidebar-link-active' : ''}`}>
-                  {project.name}
-                </Link>
-              </li>
-            )}
-          </ul>
-        </section>
+          </section>
+        )}
 
         {isWorkspacePage && workspace && (
           <section className="sidebar-section">
@@ -116,9 +98,12 @@ export function AppSidebar() {
                   <li key={p.id}>
                     <Link
                       to={`/workspace/${workspace.id}/project/${p.id}`}
-                      className="sidebar-link"
+                      className="sidebar-link sidebar-link-row"
                     >
-                      {p.name}
+                      <span className="sidebar-link-label">{p.name}</span>
+                      <span className="sidebar-link-meta" aria-hidden>
+                        {formatSidebarDate(p.createdAt) || '—'}
+                      </span>
                     </Link>
                   </li>
                 ))}
@@ -134,7 +119,21 @@ export function AppSidebar() {
 
         {isProjectContext && workspace && project && (
           <section className="sidebar-section">
-            <h3 className="sidebar-section-title">Modules</h3>
+            <div className="sidebar-section-title-row">
+              <h3 className="sidebar-section-title">Modules</h3>
+              <button
+                type="button"
+                className="sidebar-section-action"
+                aria-label="Ajouter un module"
+                title="Ajouter un module"
+                onClick={() => {
+                  setAddWithDetectedModule(detectedModuleNotInProject)
+                  setAddModuleDialogOpen(true)
+                }}
+              >
+                <Plus size={16} strokeWidth={2.5} aria-hidden />
+              </button>
+            </div>
             {modules.length === 0 ? (
               <p className="sidebar-empty">Aucun module</p>
             ) : (
@@ -146,11 +145,17 @@ export function AppSidebar() {
                     <li key={m.id} className="sidebar-module-item">
                       <Link
                         to={`/workspace/${workspace.id}/project/${project.id}/module/${m.id}`}
-                        className={`sidebar-link ${m.id === moduleId ? 'sidebar-link-active' : ''}`}
+                        className={`sidebar-link sidebar-link-module ${m.id === moduleId ? 'sidebar-link-active' : ''}`}
+                        title={isConnected ? 'Module connecté au DigiKey' : undefined}
                       >
-                        {m.name}
+                        {isConnected && (
+                          <span className="sidebar-module-plug">
+                            <Plug size={12} strokeWidth={2.5} aria-hidden />
+                          </span>
+                        )}
+                        <span className="sidebar-link-label">{m.name}</span>
                       </Link>
-                      {connectedModuleSn !== null && (
+                      {connectedModuleSn !== null && !isConnected && (
                         <span
                           className={`sidebar-module-status ${isConnected ? 'sidebar-module-status-connected' : 'sidebar-module-status-disconnected'}`}
                           title={isConnected ? 'Module connecté au DigiKey' : isModuleAbsent ? 'Module absent (pas de réponse au ping)' : 'Autre module connecté'}
@@ -163,23 +168,6 @@ export function AppSidebar() {
                 })}
               </ul>
             )}
-
-            <div className="sidebar-actions sidebar-actions-separated">
-              {detectedModuleNotInProject && (
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm sidebar-add-detected-btn"
-                  onClick={() => {
-                    setAddModuleProjectId(project.id)
-                    setAddWithDetectedModule(true)
-                    setAddModuleDialogOpen(true)
-                  }}
-                >
-                  Module détecté, ajouter ?
-                </button>
-              )}
-              {addModuleButton}
-            </div>
           </section>
         )}
       </nav>

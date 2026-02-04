@@ -167,7 +167,7 @@ export function IntentionPickerDialog({
         </h3>
 
         {step === 'pick' && (
-        <div className="intention-picker-grid">
+          <div className="intention-picker-grid">
             <div className="intention-picker-category">
               <span className="intention-picker-category-label">Fixe</span>
               <div className="intention-picker-options">
