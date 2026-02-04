@@ -1,4 +1,5 @@
 import type { SerialConnectionState } from './types'
+import { crc32 } from './crc32'
 
 export interface ModuleInfo {
   board: Record<string, string>
@@ -47,6 +48,17 @@ let sceneDoneResolve: (() => void) | null = null
 let sceneMetaSetResolve: ((ok: boolean) => void) | null = null
 let uploadInProgress = false
 
+let sceneUploadReadyResolve: (() => void) | null = null
+let sceneBlockOkResolve: (() => void) | null = null
+let sceneBlockOkReject: ((err: Error) => void) | null = null
+let sceneBlockOkExpectedIndex: number | null = null
+let sceneBlockOkTimeoutId: ReturnType<typeof setTimeout> | null = null
+let sceneHashFromBridgeResolve: ((obj: { crc: string; hash: string }) => void) | null = null
+let sceneHashFromBridgeTimeoutId: ReturnType<typeof setTimeout> | null = null
+type SceneUploadResult = { ok: boolean; msg?: string }
+let sceneUploadResultResolve: ((result: SceneUploadResult) => void) | null = null
+let sceneUploadResultTimeoutId: ReturnType<typeof setTimeout> | null = null
+
 const SCAN_TIMEOUT_MS = 15000
 const SCENE_READY_TIMEOUT_MS = 5000
 const SCENE_SIZE_ACK_TIMEOUT_MS = 5000
@@ -55,9 +67,38 @@ const SCENE_META_SET_TIMEOUT_MS = 5000
 const SCENE_CHUNK = 64
 const SCENE_CHUNK_DELAY_MS = 12
 
+export const LFP_BLOCK_SIZE = 256
+const SCENE_UPLOAD_READY_TIMEOUT_MS = 5000
+const SCENE_BLOCK_OK_TIMEOUT_MS = 5000
+const SCENE_GET_HASH_TIMEOUT_MS = 5000
+const SCENE_SEND_TO_MODULE_TIMEOUT_MS = 60000
+
+const UPLOAD_ESTIMATE_MS_PER_KB = 219
+const UPLOAD_ESTIMATE_FIXED_MS = 8420
+
+const PHASE1_MS_PER_KB = 14.1
+const PHASE1_FIXED_MS = 7040
+const PHASE2_MS_PER_KB = 149.5
+const PHASE3_MS_PER_KB = 55.5
+const PHASE3_FIXED_MS = 1400
+
 export function estimateUploadTimeMs(dataBytes: number): number {
-  const chunks = Math.ceil(dataBytes / SCENE_CHUNK)
-  return chunks * SCENE_CHUNK_DELAY_MS
+  const sizeKb = dataBytes / 1024
+  return Math.round(sizeKb * UPLOAD_ESTIMATE_MS_PER_KB + UPLOAD_ESTIMATE_FIXED_MS)
+}
+
+function getUploadPhaseMs(dataBytes: number): { totalMs: number; phase1Ms: number; phase2Ms: number; phase3Ms: number } {
+  const sizeKb = dataBytes / 1024
+  const phase1Ms = Math.round(sizeKb * PHASE1_MS_PER_KB + PHASE1_FIXED_MS)
+  const phase2Ms = Math.round(sizeKb * PHASE2_MS_PER_KB)
+  const phase3Ms = Math.round(sizeKb * PHASE3_MS_PER_KB + PHASE3_FIXED_MS)
+  const totalMs = phase1Ms + phase2Ms + phase3Ms
+  return { totalMs, phase1Ms, phase2Ms, phase3Ms }
+}
+
+function crc32BytesHex(bytes: Uint8Array): string {
+  const c = crc32(bytes)
+  return (c >>> 0).toString(16).padStart(8, '0').toLowerCase()
 }
 
 function parseKeyValueLines(lines: string[]): Record<string, string> {
@@ -139,6 +180,64 @@ function processLine(trimmed: string): void {
     sceneMetaSetResolve(false)
     sceneMetaSetResolve = null
   }
+  if (trimmed === 'SCENE_UPLOAD_READY' && sceneUploadReadyResolve) {
+    sceneUploadReadyResolve()
+    sceneUploadReadyResolve = null
+  } else if (/^SCENE_HASH:[0-9a-fA-F]{8}:[0-9a-fA-F]{64}$/.test(trimmed)) {
+    const parts = trimmed.split(':')
+    if (parts.length === 3 && sceneHashFromBridgeResolve) {
+      if (sceneHashFromBridgeTimeoutId) {
+        clearTimeout(sceneHashFromBridgeTimeoutId)
+        sceneHashFromBridgeTimeoutId = null
+      }
+      sceneHashFromBridgeResolve({ crc: parts[1], hash: parts[2] })
+      sceneHashFromBridgeResolve = null
+    }
+  } else if (/^SCENE_BLOCK_ERR:\d+$/.test(trimmed)) {
+    const m = trimmed.match(/^SCENE_BLOCK_ERR:(\d+)$/)
+    const idx = m ? parseInt(m[1], 10) : -1
+    if (sceneBlockOkReject !== null && sceneBlockOkExpectedIndex === idx) {
+      if (sceneBlockOkTimeoutId) {
+        clearTimeout(sceneBlockOkTimeoutId)
+        sceneBlockOkTimeoutId = null
+      }
+      sceneBlockOkReject(new Error('SCENE_BLOCK_ERR:' + idx))
+      sceneBlockOkResolve = null
+      sceneBlockOkReject = null
+      sceneBlockOkExpectedIndex = null
+    }
+  } else if (/^SCENE_BLOCK_OK:\d+$/.test(trimmed)) {
+    const m = trimmed.match(/^SCENE_BLOCK_OK:(\d+)$/)
+    const idx = m ? parseInt(m[1], 10) : -1
+    if (sceneBlockOkResolve !== null && sceneBlockOkExpectedIndex === idx) {
+      if (sceneBlockOkTimeoutId) {
+        clearTimeout(sceneBlockOkTimeoutId)
+        sceneBlockOkTimeoutId = null
+      }
+      sceneBlockOkResolve()
+      sceneBlockOkResolve = null
+      sceneBlockOkReject = null
+      sceneBlockOkExpectedIndex = null
+    }
+  } else if (trimmed.startsWith('SCENE_OK')) {
+    if (sceneUploadResultResolve) {
+      if (sceneUploadResultTimeoutId) {
+        clearTimeout(sceneUploadResultTimeoutId)
+        sceneUploadResultTimeoutId = null
+      }
+      sceneUploadResultResolve({ ok: true })
+      sceneUploadResultResolve = null
+    }
+  } else if (trimmed.startsWith('SCENE_ERR')) {
+    if (sceneUploadResultResolve) {
+      if (sceneUploadResultTimeoutId) {
+        clearTimeout(sceneUploadResultTimeoutId)
+        sceneUploadResultTimeoutId = null
+      }
+      sceneUploadResultResolve({ ok: false, msg: trimmed })
+      sceneUploadResultResolve = null
+    }
+  }
   if (scanState === 'idle') return
   if (scanState === 'config') {
     if (trimmed.startsWith('CONFEND:')) {
@@ -211,7 +310,9 @@ function getModulePresent(): boolean {
 function isTaskInProgress(): boolean {
   return uploadInProgress || scanState !== 'idle' || setConfigResolve !== null ||
     sceneReadyResolve !== null || sceneSizeAckResolve !== null ||
-    sceneDoneResolve !== null || sceneMetaSetResolve !== null
+    sceneDoneResolve !== null || sceneMetaSetResolve !== null ||
+    sceneUploadReadyResolve !== null || sceneBlockOkResolve !== null ||
+    sceneHashFromBridgeResolve !== null || sceneUploadResultResolve !== null
 }
 
 function startPresencePing(): void {
@@ -485,6 +586,172 @@ async function uploadScene(
   }
 }
 
+function waitForSceneUploadReady(timeoutMs: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => {
+      if (sceneUploadReadyResolve) {
+        sceneUploadReadyResolve = null
+        reject(new Error('SCENE_UPLOAD_READY timeout'))
+      }
+    }, timeoutMs)
+    sceneUploadReadyResolve = () => {
+      clearTimeout(t)
+      sceneUploadReadyResolve = null
+      resolve()
+    }
+  })
+}
+
+function waitForSceneBlockOk(expectedIndex: number, timeoutMs: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    sceneBlockOkExpectedIndex = expectedIndex
+    sceneBlockOkTimeoutId = setTimeout(() => {
+      sceneBlockOkTimeoutId = null
+      if (sceneBlockOkResolve) {
+        sceneBlockOkResolve = null
+        sceneBlockOkReject = null
+        sceneBlockOkExpectedIndex = null
+        reject(new Error('SCENE_BLOCK_OK:' + expectedIndex + ' timeout'))
+      }
+    }, timeoutMs)
+    sceneBlockOkResolve = () => {
+      if (sceneBlockOkTimeoutId) clearTimeout(sceneBlockOkTimeoutId)
+      sceneBlockOkTimeoutId = null
+      sceneBlockOkResolve = null
+      sceneBlockOkReject = null
+      sceneBlockOkExpectedIndex = null
+      resolve()
+    }
+    sceneBlockOkReject = (err: Error) => {
+      if (sceneBlockOkTimeoutId) clearTimeout(sceneBlockOkTimeoutId)
+      sceneBlockOkTimeoutId = null
+      sceneBlockOkResolve = null
+      sceneBlockOkReject = null
+      sceneBlockOkExpectedIndex = null
+      reject(err)
+    }
+  })
+}
+
+function waitForSceneHashFromBridge(timeoutMs: number): Promise<{ crc: string; hash: string }> {
+  return new Promise((resolve, reject) => {
+    sceneHashFromBridgeTimeoutId = setTimeout(() => {
+      sceneHashFromBridgeTimeoutId = null
+      if (sceneHashFromBridgeResolve) {
+        sceneHashFromBridgeResolve = null
+        reject(new Error('SCENE_HASH timeout'))
+      }
+    }, timeoutMs)
+    sceneHashFromBridgeResolve = (obj) => {
+      if (sceneHashFromBridgeTimeoutId) clearTimeout(sceneHashFromBridgeTimeoutId)
+      sceneHashFromBridgeTimeoutId = null
+      sceneHashFromBridgeResolve = null
+      resolve(obj)
+    }
+  })
+}
+
+function waitForSceneUploadResult(timeoutMs: number): Promise<SceneUploadResult> {
+  return new Promise((resolve, reject) => {
+    sceneUploadResultTimeoutId = setTimeout(() => {
+      sceneUploadResultTimeoutId = null
+      if (sceneUploadResultResolve) {
+        sceneUploadResultResolve = null
+        reject(new Error('SCENE_UPLOAD_DONE timeout'))
+      }
+    }, timeoutMs)
+    sceneUploadResultResolve = (result) => {
+      if (sceneUploadResultTimeoutId) clearTimeout(sceneUploadResultTimeoutId)
+      sceneUploadResultTimeoutId = null
+      sceneUploadResultResolve = null
+      resolve(result)
+    }
+  })
+}
+
+export type UploadLfpPhase = 1 | 2 | 3
+
+export interface UploadLfpOptions {
+  slot: 1 | 2
+  onProgress?: (pct: number, phase?: UploadLfpPhase, rateKbPerS?: number) => void
+}
+
+async function uploadLfp(lfpBuffer: ArrayBuffer, options: UploadLfpOptions): Promise<void> {
+  if (state !== 'connected' || !port?.writable) {
+    throw new Error('DigiKey not connected')
+  }
+  if (uploadInProgress) throw new Error('Upload already in progress')
+  uploadInProgress = true
+  let phaseIntervalId: ReturnType<typeof setInterval> | null = null
+  try {
+    const { onProgress } = options
+    const data = new Uint8Array(lfpBuffer)
+    const totalSize = data.length
+    if (totalSize === 0 || totalSize > 1024 * 1024) {
+      throw new Error('Invalid file size')
+    }
+    const { totalMs, phase1Ms, phase2Ms, phase3Ms } = getUploadPhaseMs(totalSize)
+    const hashBuf = await crypto.subtle.digest('SHA-256', data)
+    const hashHex = bytesToHex(new Uint8Array(hashBuf)).toLowerCase()
+    const numBlocks = Math.ceil(totalSize / LFP_BLOCK_SIZE)
+
+    await sendMessage('SCENE_UPLOAD_START:' + totalSize)
+    await waitForSceneUploadReady(SCENE_UPLOAD_READY_TIMEOUT_MS)
+
+    const writer = port.writable.getWriter()
+    const textEncoder = new TextEncoder()
+    try {
+      for (let i = 0; i < numBlocks; i++) {
+        const blockStart = i * LFP_BLOCK_SIZE
+        const blockEnd = Math.min(blockStart + LFP_BLOCK_SIZE, totalSize)
+        const block = data.subarray(blockStart, blockEnd)
+        const blockLen = block.length
+        const crcHex = crc32BytesHex(block)
+        const line = 'SCENE_BLOCK:' + i + ':' + blockLen + ':' + crcHex + '\n'
+        await writer.write(textEncoder.encode(line))
+        await writer.write(block)
+        await waitForSceneBlockOk(i, SCENE_BLOCK_OK_TIMEOUT_MS)
+        const pct = Math.round(((i + 1) / numBlocks) * (phase1Ms / totalMs) * 100)
+        onProgress?.(Math.min(99, pct), 1)
+      }
+    } finally {
+      writer.releaseLock()
+    }
+
+    await sendMessage('SCENE_GET_HASH')
+    const hashResult = await waitForSceneHashFromBridge(SCENE_GET_HASH_TIMEOUT_MS)
+    const fileCrcHex = crc32BytesHex(data)
+    if (hashResult.crc.toLowerCase() !== fileCrcHex || hashResult.hash.toLowerCase() !== hashHex) {
+      throw new Error('Bridge verify failed: crc/hash mismatch')
+    }
+
+    const phase1Pct = Math.round((phase1Ms / totalMs) * 100)
+    onProgress?.(Math.min(99, phase1Pct), 1)
+
+    const phase2RateKbPerS = phase2Ms > 0 ? (totalSize / 1024) / (phase2Ms / 1000) : 0
+    const phase2Plus3Ms = phase2Ms + phase3Ms
+    const phaseProgressStart = Date.now()
+    phaseIntervalId = setInterval(() => {
+      const elapsed = Date.now() - phaseProgressStart
+      const phaseElapsed = Math.min(elapsed, phase2Plus3Ms)
+      const pct = Math.round((phase1Ms + phaseElapsed) / totalMs * 100)
+      const currentPhase: UploadLfpPhase = elapsed < phase2Ms ? 2 : 3
+      const rate = currentPhase === 2 ? phase2RateKbPerS : undefined
+      onProgress?.(Math.min(99, pct), currentPhase, rate)
+    }, 200)
+
+    await sendMessage('SCENE_SEND_TO_MODULE:' + hashHex)
+    const result = await waitForSceneUploadResult(SCENE_SEND_TO_MODULE_TIMEOUT_MS)
+    if (!result.ok) {
+      throw new Error(result.msg ?? 'Module upload failed')
+    }
+    onProgress?.(100, 3)
+  } finally {
+    if (phaseIntervalId) clearInterval(phaseIntervalId)
+    uploadInProgress = false
+  }
+}
+
 export const serialConnection = {
   connect,
   disconnect,
@@ -499,4 +766,5 @@ export const serialConnection = {
   getModulePresent,
   isSupported,
   uploadScene,
+  uploadLfp,
 }
