@@ -1,5 +1,6 @@
 #include "config.h"
 #include "serial_protocol.h"
+#include "storage.h"
 #include "crc_hash.h"
 #include <LittleFS.h>
 #include <bearssl/bearssl_hash.h>
@@ -181,6 +182,49 @@ void sendFileBlock(const char* path, const char* endPrefix) {
   emitBlockEnd(crc, h, endPrefix);
 }
 
+void sendSceneMetaBlock(const char* endPrefix) {
+  uint16_t tick_ms = 0;
+  uint32_t frame_count = 0;
+  uint16_t channel_count = 0;
+  sceneLfpMeta(&tick_ms, &frame_count, &channel_count);
+  br_sha256_context sha;
+  br_sha256_init(&sha);
+  uint32_t crc = 0xffffffffUL;
+  char ln[64];
+  int n = snprintf(ln, sizeof(ln), "tick_ms:%u", (unsigned)tick_ms);
+  if (n > 0 && (size_t)n < sizeof(ln)) {
+    crc = crc32_update(crc, (const uint8_t*)ln, (size_t)n);
+    crc = crc32_update(crc, (const uint8_t*)"\n", 1);
+    br_sha256_update(&sha, (const void*)ln, (size_t)n);
+    br_sha256_update(&sha, (const void*)"\n", 1);
+    Serial.print(ln);
+    Serial.print("\r\n");
+  }
+  n = snprintf(ln, sizeof(ln), "frame_count:%lu", (unsigned long)frame_count);
+  if (n > 0 && (size_t)n < sizeof(ln)) {
+    crc = crc32_update(crc, (const uint8_t*)ln, (size_t)n);
+    crc = crc32_update(crc, (const uint8_t*)"\n", 1);
+    br_sha256_update(&sha, (const void*)ln, (size_t)n);
+    br_sha256_update(&sha, (const void*)"\n", 1);
+    Serial.print(ln);
+    Serial.print("\r\n");
+  }
+  n = snprintf(ln, sizeof(ln), "channel_count:%u", (unsigned)channel_count);
+  if (n > 0 && (size_t)n < sizeof(ln)) {
+    crc = crc32_update(crc, (const uint8_t*)ln, (size_t)n);
+    crc = crc32_update(crc, (const uint8_t*)"\n", 1);
+    br_sha256_update(&sha, (const void*)ln, (size_t)n);
+    br_sha256_update(&sha, (const void*)"\n", 1);
+    Serial.print(ln);
+    Serial.print("\r\n");
+  }
+  Serial.flush();
+  crc = crc32_final(crc);
+  uint8_t h[32];
+  br_sha256_out(&sha, h);
+  emitBlockEnd(crc, h, endPrefix);
+}
+
 void sendFileText(const char* path, const char* errLine, const char* endLine) {
   if (!LittleFS.exists(path)) {
     while (Serial.availableForWrite() < 64) { yield(); delay(1); }
@@ -219,12 +263,12 @@ void sendFileText(const char* path, const char* errLine, const char* endLine) {
   Serial.flush();
 }
 
-void dumpSceneFile(void) {
-  if (!LittleFS.exists(SCENE_FILE)) {
+void dumpSceneFile(const char* path) {
+  if (!path || !LittleFS.exists(path)) {
     sendLine("SCENE_DUMP_ERR:nofile");
     return;
   }
-  File f = LittleFS.open(SCENE_FILE, "r");
+  File f = LittleFS.open(path, "r");
   if (!f) {
     sendLine("SCENE_DUMP_ERR:open");
     return;
