@@ -11,6 +11,16 @@ uint8_t hexCharToNibble(char c) {
   return 0xff;
 }
 
+uint32_t parseHex32(const char* hex, size_t len) {
+  uint32_t v = 0;
+  for (size_t i = 0; i < len && i < 8; i++) {
+    uint8_t n = hexCharToNibble(hex[i]);
+    if (n == 0xff) return 0;
+    v = (v << 4) | n;
+  }
+  return v;
+}
+
 bool hexToBytes(const char* hex, size_t hexLen, uint8_t* out, size_t outLen) {
   if (hexLen != outLen * 2) return false;
   for (size_t i = 0; i < outLen; i++) {
