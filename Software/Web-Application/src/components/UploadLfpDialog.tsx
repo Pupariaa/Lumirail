@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSerial } from '../context/useSerial'
 import { estimateUploadTimeMs } from '../serial'
+import { useDialogPresence } from './useDialogPresence'
 
 interface UploadLfpDialogProps {
   open: boolean
@@ -65,11 +66,27 @@ export function UploadLfpDialog({
     onSuccess()
   }
 
-  if (!open) return null
+  useEffect(() => {
+    if (!open) {
+      setShowConfirm(false)
+      setShowSuccess(false)
+      setUploading(false)
+      setProgress(0)
+      setPhase(1)
+      setRateKbPerS(null)
+      setError(null)
+    }
+  }, [open])
+
+  const { present, state } = useDialogPresence(open, 160)
+  if (!present) return null
+
+  const confirmPresence = useDialogPresence(showConfirm, 140)
+  const successPresence = useDialogPresence(showSuccess, 140)
 
   return (
-    <div className="upload-scene-dialog-backdrop" onClick={() => { if (!uploading) onCancel() }} role="presentation">
-      <div className="upload-scene-dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="upload-lfp-title">
+    <div className="upload-scene-dialog-backdrop" onClick={() => { if (!uploading) onCancel() }} role="presentation" data-state={state}>
+      <div className="upload-scene-dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="upload-lfp-title" data-state={state}>
         <header className="upload-scene-dialog-header">
           <div className="upload-scene-dialog-header-text">
             <h2 id="upload-lfp-title" className="upload-scene-dialog-title">Téléverser la scène</h2>
@@ -106,8 +123,8 @@ export function UploadLfpDialog({
           </div>
         )}
 
-        {showConfirm && (
-          <div className="upload-scene-confirm-backdrop" onClick={() => setShowConfirm(false)} role="presentation">
+        {confirmPresence.present && (
+          <div className="upload-scene-confirm-backdrop" onClick={() => setShowConfirm(false)} role="presentation" data-state={confirmPresence.state}>
             <div className="upload-scene-confirm-box" onClick={(e) => e.stopPropagation()} role="alertdialog" aria-labelledby="upload-lfp-confirm-title">
               <h3 id="upload-lfp-confirm-title" className="upload-scene-confirm-title">Démarrer le téléversement ?</h3>
               <p className="upload-scene-confirm-text">Pendant le téléversement :</p>
@@ -124,8 +141,8 @@ export function UploadLfpDialog({
           </div>
         )}
 
-        {showSuccess && (
-          <div className="upload-scene-confirm-backdrop" role="presentation">
+        {successPresence.present && (
+          <div className="upload-scene-confirm-backdrop" role="presentation" data-state={successPresence.state}>
             <div className="upload-scene-success-box" role="alertdialog" aria-labelledby="upload-lfp-success-title">
               <h3 id="upload-lfp-success-title" className="upload-scene-success-title">Téléversement réussi</h3>
               <p className="upload-scene-success-text">Le fichier LFP a bien été transféré vers le module.</p>

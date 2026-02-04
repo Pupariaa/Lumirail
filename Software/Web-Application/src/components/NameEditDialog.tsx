@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useDialogPresence } from './useDialogPresence'
 
 interface NameEditDialogProps {
   open: boolean
@@ -47,13 +48,15 @@ export function NameEditDialog({
     if (trimmed || allowEmpty) onConfirm(trimmed)
   }
 
-  if (!open) return null
+  const { present, state } = useDialogPresence(open, 160)
+  if (!present) return null
 
   return (
     <div
       className="name-edit-dialog-backdrop"
       onClick={onCancel}
       role="presentation"
+      data-state={state}
     >
       <div
         className="name-edit-dialog"
@@ -61,6 +64,7 @@ export function NameEditDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="name-edit-dialog-title"
+        data-state={state}
       >
         <h2 id="name-edit-dialog-title" className="name-edit-dialog-title">
           {title}

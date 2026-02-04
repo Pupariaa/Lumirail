@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { Project, Module, StoredModuleInfo } from '../data'
 import { isValidModuleSerial } from '../serial'
+import { useDialogPresence } from './useDialogPresence'
 
 const MODULE_SERIAL_PLACEHOLDER = 'LMS-XX-XX-XX-XX-XX'
 const BOARD_RECAP_KEYS = ['MODEL', 'SN', 'REV']
@@ -114,13 +115,15 @@ export function AddModuleDialog({
     setAssociateModuleId('')
   }
 
-  if (!open) return null
+  const { present, state } = useDialogPresence(open, 160)
+  if (!present) return null
 
   return createPortal(
     <div
       className="add-module-dialog-backdrop"
       onClick={onClose}
       role="presentation"
+      data-state={state}
     >
       <div
         className="add-module-dialog"
@@ -128,6 +131,7 @@ export function AddModuleDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-module-dialog-title"
+        data-state={state}
       >
         <h2 id="add-module-dialog-title" className="add-module-dialog-title">
           Ajouter un module

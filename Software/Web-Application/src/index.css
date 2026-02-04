@@ -74,6 +74,65 @@ body {
     linear-gradient(180deg, #11131a 0%, #0b0d12 100%);
 }
 
+.dialog-overlay {
+  animation: dialog-overlay-in 140ms ease-out;
+}
+
+.dialog-surface {
+  animation: dialog-surface-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform, opacity;
+}
+
+@keyframes dialog-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialog-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes dialog-surface-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dialog-surface-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-timeline-dialog-overlay,
+  .scene-timeline-dialog,
+  .intention-picker-overlay,
+  .intention-picker-dialog,
+  .name-edit-dialog-backdrop,
+  .name-edit-dialog,
+  .add-module-dialog-backdrop,
+  .add-module-dialog,
+  .upload-scene-dialog-backdrop,
+  .upload-scene-dialog,
+  .upload-scene-confirm-backdrop,
+  .delete-module-confirm-backdrop,
+  .delete-module-confirm-dialog {
+    animation: none !important;
+  }
+}
+
 .app-shell {
   background: transparent;
 }
@@ -267,19 +326,21 @@ body {
 
 .sidebar-section-title-row .sidebar-section-title {
   margin-bottom: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
 }
 
 .sidebar-section-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  border: 1px solid rgba(73, 208, 139, 0.35);
-  background: rgba(73, 208, 139, 0.12);
+  border: 1px solid rgba(73, 208, 139, 0.28);
+  background: rgba(73, 208, 139, 0.1);
   color: var(--accent-success);
   transition: background 0.15s, border-color 0.15s, color 0.15s, filter 0.15s;
 }
@@ -900,6 +961,14 @@ body {
 
 .page-tabs-actions .page-tabs-action {
   margin-bottom: 0;
+}
+
+.page-tabs-actions .btn-primary {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.28), 0 14px 22px -18px rgba(124, 156, 247, 0.55);
+}
+
+.page-tabs-actions .btn-primary:hover:not(:disabled) {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.32), 0 16px 24px -18px rgba(124, 156, 247, 0.65);
 }
 
 .page-tabs-action {
@@ -3035,6 +3104,16 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: none;
+}
+
+.scene-timeline-dialog-overlay[data-state="open"] {
+  animation: dialog-overlay-in 140ms ease-out both;
+}
+
+.scene-timeline-dialog-overlay[data-state="closing"] {
+  animation: dialog-overlay-out 120ms ease-in both;
+  pointer-events: none;
 }
 
 .scene-timeline-dialog {
@@ -3043,6 +3122,17 @@ body {
   border-radius: var(--radius-lg);
   padding: var(--spacing-lg);
   box-shadow: var(--shadow-lg);
+  animation: none;
+  will-change: transform, opacity;
+}
+
+.scene-timeline-dialog[data-state="open"] {
+  animation: dialog-surface-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.scene-timeline-dialog[data-state="closing"] {
+  animation: dialog-surface-out 140ms ease-in both;
+  pointer-events: none;
 }
 
 .scene-timeline-dialog-title {
@@ -3059,6 +3149,16 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: none;
+}
+
+.intention-picker-overlay[data-state="open"] {
+  animation: dialog-overlay-in 140ms ease-out both;
+}
+
+.intention-picker-overlay[data-state="closing"] {
+  animation: dialog-overlay-out 120ms ease-in both;
+  pointer-events: none;
 }
 
 .intention-picker-dialog {
@@ -3071,6 +3171,17 @@ body {
   width: 90vw;
   max-height: 85vh;
   overflow-y: auto;
+  animation: none;
+  will-change: transform, opacity;
+}
+
+.intention-picker-dialog[data-state="open"] {
+  animation: dialog-surface-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.intention-picker-dialog[data-state="closing"] {
+  animation: dialog-surface-out 140ms ease-in both;
+  pointer-events: none;
 }
 
 .intention-picker-title {
@@ -4071,6 +4182,16 @@ body {
   justify-content: center;
   background: rgba(0, 0, 0, 0.45);
   padding: var(--spacing-lg);
+  animation: none;
+}
+
+.name-edit-dialog-backdrop[data-state="open"] {
+  animation: dialog-overlay-in 140ms ease-out both;
+}
+
+.name-edit-dialog-backdrop[data-state="closing"] {
+  animation: dialog-overlay-out 120ms ease-in both;
+  pointer-events: none;
 }
 
 .name-edit-dialog {
@@ -4081,6 +4202,17 @@ body {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
+  animation: none;
+  will-change: transform, opacity;
+}
+
+.name-edit-dialog[data-state="open"] {
+  animation: dialog-surface-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.name-edit-dialog[data-state="closing"] {
+  animation: dialog-surface-out 140ms ease-in both;
+  pointer-events: none;
 }
 
 .name-edit-dialog-title {
@@ -4132,6 +4264,16 @@ body {
   justify-content: center;
   background: rgba(0, 0, 0, 0.45);
   padding: var(--spacing-lg);
+  animation: none;
+}
+
+.add-module-dialog-backdrop[data-state="open"] {
+  animation: dialog-overlay-in 140ms ease-out both;
+}
+
+.add-module-dialog-backdrop[data-state="closing"] {
+  animation: dialog-overlay-out 120ms ease-in both;
+  pointer-events: none;
 }
 
 .add-module-dialog {
@@ -4142,6 +4284,17 @@ body {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
+  animation: none;
+  will-change: transform, opacity;
+}
+
+.add-module-dialog[data-state="open"] {
+  animation: dialog-surface-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.add-module-dialog[data-state="closing"] {
+  animation: dialog-surface-out 140ms ease-in both;
+  pointer-events: none;
 }
 
 .add-module-dialog-title {
@@ -4184,6 +4337,16 @@ body {
   justify-content: center;
   background: rgba(0, 0, 0, 0.45);
   padding: var(--spacing-lg);
+  animation: none;
+}
+
+.upload-scene-dialog-backdrop[data-state="open"] {
+  animation: dialog-overlay-in 140ms ease-out both;
+}
+
+.upload-scene-dialog-backdrop[data-state="closing"] {
+  animation: dialog-overlay-out 120ms ease-in both;
+  pointer-events: none;
 }
 
 .upload-scene-dialog {
@@ -4197,6 +4360,17 @@ body {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
+  animation: none;
+  will-change: transform, opacity;
+}
+
+.upload-scene-dialog[data-state="open"] {
+  animation: dialog-surface-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.upload-scene-dialog[data-state="closing"] {
+  animation: dialog-surface-out 140ms ease-in both;
+  pointer-events: none;
 }
 
 .upload-scene-dialog-header {
@@ -4372,6 +4546,16 @@ body {
   justify-content: center;
   background: rgba(0, 0, 0, 0.6);
   border-radius: inherit;
+  animation: none;
+}
+
+.upload-scene-confirm-backdrop[data-state="open"] {
+  animation: dialog-overlay-in 140ms ease-out both;
+}
+
+.upload-scene-confirm-backdrop[data-state="closing"] {
+  animation: dialog-overlay-out 120ms ease-in both;
+  pointer-events: none;
 }
 
 .upload-scene-confirm-box {
@@ -4644,6 +4828,16 @@ body {
   align-items: center;
   justify-content: center;
   padding: var(--spacing-lg);
+  animation: none;
+}
+
+.delete-module-confirm-backdrop[data-state="open"] {
+  animation: dialog-overlay-in 140ms ease-out both;
+}
+
+.delete-module-confirm-backdrop[data-state="closing"] {
+  animation: dialog-overlay-out 120ms ease-in both;
+  pointer-events: none;
 }
 
 .delete-module-confirm-dialog {
@@ -4653,6 +4847,17 @@ body {
   background: var(--bg-panel);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
+  animation: none;
+  will-change: transform, opacity;
+}
+
+.delete-module-confirm-dialog[data-state="open"] {
+  animation: dialog-surface-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.delete-module-confirm-dialog[data-state="closing"] {
+  animation: dialog-surface-out 140ms ease-in both;
+  pointer-events: none;
 }
 
 .delete-module-confirm-title {

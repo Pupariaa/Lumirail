@@ -131,7 +131,7 @@ export function AppSidebar() {
                   setAddModuleDialogOpen(true)
                 }}
               >
-                <Plus size={16} strokeWidth={2.5} aria-hidden />
+                <Plus size={14} strokeWidth={2.5} aria-hidden />
               </button>
             </div>
             {modules.length === 0 ? (

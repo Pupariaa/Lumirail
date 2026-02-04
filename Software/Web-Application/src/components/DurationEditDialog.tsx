@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useDialogPresence } from './useDialogPresence'
 
 interface DurationEditDialogProps {
   open: boolean
@@ -48,13 +49,15 @@ export function DurationEditDialog({
     if (eVal > s && eVal - s >= 1 / 60) onConfirm(s, eVal)
   }
 
-  if (!open) return null
+  const { present, state } = useDialogPresence(open, 160)
+  if (!present) return null
 
   return (
     <div
       className="name-edit-dialog-backdrop"
       onClick={onCancel}
       role="presentation"
+      data-state={state}
     >
       <div
         className="name-edit-dialog"
@@ -62,6 +65,7 @@ export function DurationEditDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="duration-edit-dialog-title"
+        data-state={state}
       >
         <h2 id="duration-edit-dialog-title" className="name-edit-dialog-title">
           {title}

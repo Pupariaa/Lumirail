@@ -3,6 +3,7 @@ import { useSerial } from '../context/useSerial'
 import { estimateUploadTimeMs } from '../serial'
 import { generateSceneText } from '../sceneGenerator'
 import { formatDurationMs } from './timeline-viewport'
+import { useDialogPresence } from './useDialogPresence'
 
 interface UploadSceneDialogProps {
   open: boolean
@@ -71,6 +72,16 @@ export function UploadSceneDialog({
     } else if (!open) setHash('')
   }, [open, sceneText])
 
+  useEffect(() => {
+    if (!open) {
+      setShowConfirm(false)
+      setShowSuccess(false)
+      setUploading(false)
+      setProgress(0)
+      setError(null)
+    }
+  }, [open])
+
   const handleTéléverserClick = () => {
     if (!canUpload) return
     setShowConfirm(true)
@@ -97,11 +108,15 @@ export function UploadSceneDialog({
     onSuccess()
   }
 
-  if (!open) return null
+  const { present, state } = useDialogPresence(open, 160)
+  if (!present) return null
+
+  const confirmPresence = useDialogPresence(showConfirm, 140)
+  const successPresence = useDialogPresence(showSuccess, 140)
 
   return (
-    <div className="upload-scene-dialog-backdrop" onClick={onCancel} role="presentation">
-      <div className="upload-scene-dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="upload-scene-title">
+    <div className="upload-scene-dialog-backdrop" onClick={onCancel} role="presentation" data-state={state}>
+      <div className="upload-scene-dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="upload-scene-title" data-state={state}>
         <h2 id="upload-scene-title" className="upload-scene-dialog-title">Téléverser la scène</h2>
 
         <div className="upload-scene-grid">
@@ -169,8 +184,8 @@ export function UploadSceneDialog({
           <p className="upload-scene-info">Module différent du spécifié ({storedSn}) mais compatible. Le téléversement est autorisé.</p>
         )}
 
-        {showSuccess && (
-          <div className="upload-scene-confirm-backdrop" role="presentation">
+        {successPresence.present && (
+          <div className="upload-scene-confirm-backdrop" role="presentation" data-state={successPresence.state}>
             <div className="upload-scene-success-box" role="alertdialog" aria-labelledby="upload-scene-success-title">
               <h3 id="upload-scene-success-title" className="upload-scene-success-title">Téléversement réussi</h3>
               <p className="upload-scene-success-text">La scène a bien été transférée vers le module.</p>
@@ -183,8 +198,8 @@ export function UploadSceneDialog({
           </div>
         )}
 
-        {showConfirm && (
-          <div className="upload-scene-confirm-backdrop" onClick={() => setShowConfirm(false)} role="presentation">
+        {confirmPresence.present && (
+          <div className="upload-scene-confirm-backdrop" onClick={() => setShowConfirm(false)} role="presentation" data-state={confirmPresence.state}>
             <div className="upload-scene-confirm-box" onClick={(e) => e.stopPropagation()} role="alertdialog" aria-labelledby="upload-scene-confirm-title">
               <h3 id="upload-scene-confirm-title" className="upload-scene-confirm-title">Avant de téléverser</h3>
               <p className="upload-scene-confirm-text">Pendant le téléversement :</p>

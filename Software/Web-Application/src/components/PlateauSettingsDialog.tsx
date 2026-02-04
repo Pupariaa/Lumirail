@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PlateauUnit } from '../data'
+import { useDialogPresence } from './useDialogPresence'
 
 export function PlateauSettingsDialog({
   open,
@@ -48,16 +49,18 @@ export function PlateauSettingsDialog({
     onConfirm({ width: w, height: h, unit })
   }
 
-  if (!open) return null
+  const { present, state } = useDialogPresence(open, 160)
+  if (!present) return null
 
   return (
-    <div className="name-edit-dialog-backdrop" onClick={onCancel} role="presentation">
+    <div className="name-edit-dialog-backdrop" onClick={onCancel} role="presentation" data-state={state}>
       <div
         className="name-edit-dialog"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="plateau-settings-dialog-title"
+        data-state={state}
       >
         <h2 id="plateau-settings-dialog-title" className="name-edit-dialog-title">
           Réglages du plateau

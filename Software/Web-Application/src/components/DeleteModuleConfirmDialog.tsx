@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useDialogPresence } from './useDialogPresence'
 
 interface DeleteModuleConfirmDialogProps {
   open: boolean
@@ -54,13 +55,15 @@ export function DeleteModuleConfirmDialog({
 
   const match = value.trim() === moduleName
 
-  if (!open) return null
+  const { present, state } = useDialogPresence(open, 160)
+  if (!present) return null
 
   return (
     <div
       className="delete-module-confirm-backdrop"
       onClick={onCancel}
       role="presentation"
+      data-state={state}
     >
       <div
         className="delete-module-confirm-dialog"
@@ -68,6 +71,7 @@ export function DeleteModuleConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-module-confirm-title"
+        data-state={state}
       >
         <h2 id="delete-module-confirm-title" className="delete-module-confirm-title">
           Confirmer la suppression du module

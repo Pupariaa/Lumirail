@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { IntentionKind, IntentionParams } from '../data/types'
 import { INTENTION_DEFS, getIntentionDef } from './intention-definitions'
 import { formatDurationMsPrecise, msToSimulatedMinutes, simulatedMinutesToMs } from './timeline-viewport'
+import { useDialogPresence } from './useDialogPresence'
 
 const FIXES: IntentionKind[] = ['always_on', 'always_off']
 const DYNAMIQUES: IntentionKind[] = ['random_off', 'random_on', 'blink', 'breathe', 'flicker', 'fade_in', 'fade_out', 'fade_in_out']
@@ -90,7 +91,8 @@ export function IntentionPickerDialog({
     return () => clearTimeout(t)
   }, [open])
 
-  if (!open) return null
+  const { present, state } = useDialogPresence(open, 160)
+  if (!present) return null
 
   const def = getIntentionDef(selectedKind)
   const hasParams = def?.params && def.params.length > 0
@@ -160,8 +162,8 @@ export function IntentionPickerDialog({
   }
 
   return (
-    <div className="intention-picker-overlay" onClick={handleOverlayClick} onMouseDown={(e) => e.stopPropagation()}>
-      <div className="intention-picker-dialog" role="dialog" aria-labelledby="intention-picker-title" onClick={(e) => e.stopPropagation()}>
+    <div className="intention-picker-overlay" onClick={handleOverlayClick} onMouseDown={(e) => e.stopPropagation()} data-state={state}>
+      <div className="intention-picker-dialog" role="dialog" aria-labelledby="intention-picker-title" onClick={(e) => e.stopPropagation()} data-state={state}>
         <h3 id="intention-picker-title" className="intention-picker-title">
           {title}
         </h3>

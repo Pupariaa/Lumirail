@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useDialogPresence } from './useDialogPresence'
 
 interface NumberEditDialogProps {
   open: boolean
@@ -49,13 +50,15 @@ export function NumberEditDialog({
     onConfirm(n)
   }
 
-  if (!open) return null
+  const { present, state } = useDialogPresence(open, 160)
+  if (!present) return null
 
   return (
     <div
       className="name-edit-dialog-backdrop"
       onClick={onCancel}
       role="presentation"
+      data-state={state}
     >
       <div
         className="name-edit-dialog"
@@ -63,6 +66,7 @@ export function NumberEditDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="number-edit-dialog-title"
+        data-state={state}
       >
         <h2 id="number-edit-dialog-title" className="name-edit-dialog-title">
           {title}
