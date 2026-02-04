@@ -8,6 +8,7 @@
 
 uint8_t hexCharToNibble(char c);
 bool hexToBytes(const char* hex, size_t hexLen, uint8_t* out, size_t outLen);
+uint32_t parseHex32(const char* hex, size_t len);
 
 bool lineIsSyn(const char* lineBuf, size_t lineLen);
 bool lineIs(const char* lineBuf, size_t lineLen, const char* s, size_t n);
