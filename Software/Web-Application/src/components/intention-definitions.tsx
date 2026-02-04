@@ -35,7 +35,7 @@ export const INTENTION_DEFS: IntentionDef[] = [
     type: 'on',
     params: [
       { key: 'chance', label: 'Probabilité', min: 1, max: 30, step: 1, unit: '%', default: 5 },
-      { key: 'rateMs', label: 'Durée coupure', min: 200, max: 120000, step: 200, unit: 'dur', default: 2000 },
+      { key: 'rateMs', label: 'Durée coupure', min: 100, max: 120000, step: 100, unit: 'dur', default: 2000 },
     ],
   },
   {
@@ -46,7 +46,7 @@ export const INTENTION_DEFS: IntentionDef[] = [
     type: 'off',
     params: [
       { key: 'chance', label: 'Probabilité', min: 1, max: 30, step: 1, unit: '%', default: 5 },
-      { key: 'rateMs', label: 'Durée allumage', min: 200, max: 120000, step: 200, unit: 'dur', default: 2000 },
+      { key: 'rateMs', label: 'Durée allumage', min: 100, max: 120000, step: 100, unit: 'dur', default: 2000 },
     ],
   },
   {
@@ -56,7 +56,7 @@ export const INTENTION_DEFS: IntentionDef[] = [
     icon: Sun,
     type: 'effect',
     params: [
-      { key: 'rateMs', label: 'Période', min: 200, max: 600000, step: 200, unit: 'dur', default: 2000 },
+      { key: 'rateMs', label: 'Période', min: 100, max: 600000, step: 100, unit: 'dur', default: 2000 },
     ],
   },
   {
@@ -67,7 +67,7 @@ export const INTENTION_DEFS: IntentionDef[] = [
     type: 'effect',
     requiresPwm: true,
     params: [
-      { key: 'periodMs', label: 'Période', min: 200, max: 60000, step: 200, unit: 'dur', default: 3000 },
+      { key: 'periodMs', label: 'Période', min: 100, max: 60000, step: 100, unit: 'dur', default: 3000 },
       { key: 'intensity', label: 'Intensité min', min: 10, max: 90, step: 5, unit: '%', default: 20 },
     ],
   },
@@ -79,7 +79,7 @@ export const INTENTION_DEFS: IntentionDef[] = [
     type: 'effect',
     requiresPwm: true,
     params: [
-      { key: 'rateMs', label: 'Vitesse', min: 200, max: 5000, step: 200, unit: 'dur', default: 400 },
+      { key: 'rateMs', label: 'Vitesse', min: 100, max: 5000, step: 100, unit: 'dur', default: 400 },
       { key: 'chance', label: 'Variation', min: 10, max: 80, step: 5, unit: '%', default: 40 },
     ],
   },
@@ -91,7 +91,7 @@ export const INTENTION_DEFS: IntentionDef[] = [
     type: 'effect',
     requiresPwm: true,
     params: [
-      { key: 'periodMs', label: 'Durée montée', min: 200, max: 60000, step: 200, unit: 'dur', default: 2000 },
+      { key: 'periodMs', label: 'Durée montée', min: 100, max: 60000, step: 100, unit: 'dur', default: 2000 },
     ],
   },
   {
@@ -102,7 +102,7 @@ export const INTENTION_DEFS: IntentionDef[] = [
     type: 'effect',
     requiresPwm: true,
     params: [
-      { key: 'periodMs', label: 'Durée descente', min: 200, max: 60000, step: 200, unit: 'dur', default: 2000 },
+      { key: 'periodMs', label: 'Durée descente', min: 100, max: 60000, step: 100, unit: 'dur', default: 2000 },
     ],
   },
   {
