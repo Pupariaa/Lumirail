@@ -118,6 +118,9 @@ describe('LoginPage', () => {
       expect(screen.getByRole('button', { name: /sign in/i })).toHaveFocus()
 
       await user.tab()
+      expect(screen.getByRole('link', { name: /forgot password/i })).toHaveFocus()
+
+      await user.tab()
       expect(screen.getByRole('link', { name: /create account/i })).toHaveFocus()
     })
 

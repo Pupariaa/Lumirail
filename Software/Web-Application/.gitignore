@@ -4,3 +4,7 @@ _bmad-output*
 docs
 test-output.txt
 *.tsbuildinfo
+.cursor/
+_bmad/
+_bmad-output/
+webserialtest.html

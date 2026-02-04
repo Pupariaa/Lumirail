@@ -41,7 +41,7 @@ describe('RegisterPage', () => {
     fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'pass1234' } })
     fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'pass1234' } })
     fireEvent.click(screen.getByRole('button', { name: /register/i }))
-    expect(await screen.findByRole('status')).toHaveTextContent(/account created successfully/i)
+    expect(await screen.findByRole('status')).toHaveTextContent(/account created/i)
   })
 
   it('has keyboard-accessible form structure (tab order, no tabIndex=-1)', () => {

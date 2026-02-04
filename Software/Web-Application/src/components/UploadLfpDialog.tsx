@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSerial } from '../context/useSerial'
-import { estimateUploadTimeMs, LFP_BLOCK_SIZE } from '../serial'
+import { estimateUploadTimeMs } from '../serial'
 
 interface UploadLfpDialogProps {
   open: boolean
@@ -16,7 +16,6 @@ export function UploadLfpDialog({
   onCancel,
 }: UploadLfpDialogProps) {
   const { state: serialState, uploadLfp } = useSerial()
-  const [slot, setSlot] = useState<1 | 2>(1)
   const [showConfirm, setShowConfirm] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -28,9 +27,9 @@ export function UploadLfpDialog({
   const digiKeyConnected = serialState === 'connected'
   const canUpload = digiKeyConnected && lfpBuffer && lfpBuffer.byteLength > 0 && !uploading
   const fileSize = lfpBuffer ? lfpBuffer.byteLength : 0
-  const blockCount = lfpBuffer ? Math.ceil(fileSize / LFP_BLOCK_SIZE) : 0
   const estimatedMs = lfpBuffer ? estimateUploadTimeMs(fileSize) : 0
   const sizeKb = (fileSize / 1024).toFixed(2)
+  const slot = 1 as const
 
   const handleConfirmOk = async () => {
     if (!lfpBuffer || !canUpload) return
@@ -69,43 +68,36 @@ export function UploadLfpDialog({
   if (!open) return null
 
   return (
-    <div className="upload-scene-dialog-backdrop" onClick={onCancel} role="presentation">
+    <div className="upload-scene-dialog-backdrop" onClick={() => { if (!uploading) onCancel() }} role="presentation">
       <div className="upload-scene-dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="upload-lfp-title">
-        <h2 id="upload-lfp-title" className="upload-scene-dialog-title">Téléverser le binaire LFP</h2>
+        <header className="upload-scene-dialog-header">
+          <div className="upload-scene-dialog-header-text">
+            <h2 id="upload-lfp-title" className="upload-scene-dialog-title">Téléverser la scène</h2>
+            <p className="upload-scene-dialog-subtitle">Transférez la scène vers le module connecté.</p>
+          </div>
+        </header>
 
         <div className="upload-scene-grid">
           <section className="upload-scene-section">
-            <h3 className="upload-scene-section-title">Fichier</h3>
+            <h3 className="upload-scene-section-title">Résumé</h3>
             <dl className="upload-scene-dl">
               <dt>Taille</dt>
               <dd>{sizeKb} Ko</dd>
-              <dt>Blocs (256 o)</dt>
-              <dd>{blockCount}</dd>
               <dt>Durée estimée</dt>
               <dd>{estimatedMs >= 1000 ? `${Math.round(estimatedMs / 1000)} s` : `${estimatedMs} ms`}</dd>
             </dl>
           </section>
-          <section className="upload-scene-section upload-scene-params">
-            <h3 className="upload-scene-section-title">Paramètres</h3>
-            <div className="upload-scene-param-list">
-              <div className="upload-scene-param-row">
-                <label className="upload-scene-param-label">Slot scène</label>
-                <select value={slot} onChange={(e) => setSlot(Number(e.target.value) as 1 | 2)} disabled={uploading}>
-                  <option value={1}>Scène 1</option>
-                  <option value={2}>Scène 2</option>
-                </select>
-              </div>
-            </div>
-          </section>
         </div>
 
         {!digiKeyConnected && (
-          <p className="upload-scene-warning">DigiKey non connecté. Connectez le DigiKey pour téléverser.</p>
+          <div className="upload-scene-callout upload-scene-callout-danger" role="note">
+            DigiKey non connecté. Connectez le DigiKey pour téléverser la scène.
+          </div>
         )}
 
         {(canUpload || uploading) && (
-          <div className="upload-scene-warning-box" style={{ marginTop: 0 }}>
-            <strong>Pendant le téléversement :</strong>
+          <div className="upload-scene-callout upload-scene-callout-warning" role="note">
+            <strong>Pendant le téléversement</strong>
             <ul>
               <li>Ne pas déconnecter le module</li>
               <li>Ne pas déconnecter le DigiKey</li>
@@ -117,7 +109,7 @@ export function UploadLfpDialog({
         {showConfirm && (
           <div className="upload-scene-confirm-backdrop" onClick={() => setShowConfirm(false)} role="presentation">
             <div className="upload-scene-confirm-box" onClick={(e) => e.stopPropagation()} role="alertdialog" aria-labelledby="upload-lfp-confirm-title">
-              <h3 id="upload-lfp-confirm-title" className="upload-scene-confirm-title">Avant de téléverser</h3>
+              <h3 id="upload-lfp-confirm-title" className="upload-scene-confirm-title">Démarrer le téléversement ?</h3>
               <p className="upload-scene-confirm-text">Pendant le téléversement :</p>
               <ul>
                 <li>Ne pas déconnecter le module</li>
@@ -126,7 +118,7 @@ export function UploadLfpDialog({
               </ul>
               <div className="upload-scene-confirm-actions">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowConfirm(false)}>Annuler</button>
-                <button type="button" className="btn btn-primary" onClick={handleConfirmOk}>Ok</button>
+                <button type="button" className="btn btn-primary" onClick={handleConfirmOk}>Téléverser</button>
               </div>
             </div>
           </div>

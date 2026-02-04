@@ -588,91 +588,93 @@ function ModulePage() {
             Configuration
           </button>
         </div>
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm page-tabs-action"
-          onClick={() => {
-            const board = module.storedModuleInfo?.board ?? {}
-            const onOffCount = Math.max(0, parseInt(board['CHP'] ?? '0', 10))
-            const pwmCount = Math.max(0, parseInt(board['CHPWM'] ?? '0', 10))
-            const frameMs = 100
-            const composition = {
-              version: 1,
-              params: {
-                serialNumber: getModuleSn(module),
-                onOffCount,
-                pwmCount,
-                delayMS: frameMs,
-              },
-              moduleName: module.name,
-              projectDurationMinutes: project.durationMinutes,
-              blocks: module.blocks,
-              bookmarks: module.bookmarks,
-              outputTrackLabels: module.outputTrackLabels ?? {},
-            }
-            const blob = new Blob([JSON.stringify(composition, null, 2)], { type: 'application/json' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `${module.name.replace(/[^a-zA-Z0-9-_]/g, '_')}_composition.lmr`
-            a.click()
-            URL.revokeObjectURL(url)
-          }}
-        >
-          <Download size={16} strokeWidth={2} aria-hidden />
-          Télécharger la composition
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm page-tabs-action"
-          onClick={() => {
-            const board = module.storedModuleInfo?.board ?? {}
-            let onOffCount = Math.max(0, parseInt(board['CHP'] ?? '0', 10))
-            let pwmCount = Math.max(0, parseInt(board['CHPWM'] ?? '0', 10))
-            if (onOffCount === 0 && pwmCount === 0) {
-              const maxOut = module.blocks.reduce((m, b) => Math.max(m, (b.outputIndex ?? 0) + 1), 0)
-              onOffCount = Math.max(1, maxOut)
-            }
-            const frameMs = 100
-            const durationMs = project.durationMinutes * 60 * 1000
-            const channelCount = onOffCount + pwmCount
-            const frameData = generateSceneFrames(module.blocks, durationMs, onOffCount, pwmCount, frameMs)
-            const lfp = buildLfp({ tickMs: frameMs, channelCount, frameData })
-            const blob = new Blob([lfp], { type: 'application/octet-stream' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `${module.name.replace(/[^a-zA-Z0-9-_]/g, '_')}_scene.lfp`
-            a.click()
-            URL.revokeObjectURL(url)
-          }}
-        >
-          <Download size={16} strokeWidth={2} aria-hidden />
-          Télécharger le binaire
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm page-tabs-action"
-          onClick={() => {
-            const board = module.storedModuleInfo?.board ?? {}
-            let onOffCount = Math.max(0, parseInt(board['CHP'] ?? '0', 10))
-            let pwmCount = Math.max(0, parseInt(board['CHPWM'] ?? '0', 10))
-            if (onOffCount === 0 && pwmCount === 0) {
-              const maxOut = module.blocks.reduce((m, b) => Math.max(m, (b.outputIndex ?? 0) + 1), 0)
-              onOffCount = Math.max(1, maxOut)
-            }
-            const frameMs = 100
-            const durationMs = project.durationMinutes * 60 * 1000
-            const channelCount = onOffCount + pwmCount
-            const frameData = generateSceneFrames(module.blocks, durationMs, onOffCount, pwmCount, frameMs)
-            const lfp = buildLfp({ tickMs: frameMs, channelCount, frameData })
-            setUploadLfpBuffer(lfp)
-            setUploadLfpOpen(true)
-          }}
-        >
-          <Upload size={16} strokeWidth={2} aria-hidden />
-          Téléverser le binaire
-        </button>
+        <div className="page-tabs-actions" aria-label="Actions de la scène">
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm page-tabs-action"
+            onClick={() => {
+              const board = module.storedModuleInfo?.board ?? {}
+              const onOffCount = Math.max(0, parseInt(board['CHP'] ?? '0', 10))
+              const pwmCount = Math.max(0, parseInt(board['CHPWM'] ?? '0', 10))
+              const frameMs = 100
+              const composition = {
+                version: 1,
+                params: {
+                  serialNumber: getModuleSn(module),
+                  onOffCount,
+                  pwmCount,
+                  delayMS: frameMs,
+                },
+                moduleName: module.name,
+                projectDurationMinutes: project.durationMinutes,
+                blocks: module.blocks,
+                bookmarks: module.bookmarks,
+                outputTrackLabels: module.outputTrackLabels ?? {},
+              }
+              const blob = new Blob([JSON.stringify(composition, null, 2)], { type: 'application/json' })
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url
+              a.download = `${module.name.replace(/[^a-zA-Z0-9-_]/g, '_')}_composition.lmr`
+              a.click()
+              URL.revokeObjectURL(url)
+            }}
+          >
+            <Download size={16} strokeWidth={2} aria-hidden />
+            Télécharger la composition
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm page-tabs-action"
+            onClick={() => {
+              const board = module.storedModuleInfo?.board ?? {}
+              let onOffCount = Math.max(0, parseInt(board['CHP'] ?? '0', 10))
+              let pwmCount = Math.max(0, parseInt(board['CHPWM'] ?? '0', 10))
+              if (onOffCount === 0 && pwmCount === 0) {
+                const maxOut = module.blocks.reduce((m, b) => Math.max(m, (b.outputIndex ?? 0) + 1), 0)
+                onOffCount = Math.max(1, maxOut)
+              }
+              const frameMs = 100
+              const durationMs = project.durationMinutes * 60 * 1000
+              const channelCount = onOffCount + pwmCount
+              const frameData = generateSceneFrames(module.blocks, durationMs, onOffCount, pwmCount, frameMs)
+              const lfp = buildLfp({ tickMs: frameMs, channelCount, frameData })
+              const blob = new Blob([lfp], { type: 'application/octet-stream' })
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url
+              a.download = `${module.name.replace(/[^a-zA-Z0-9-_]/g, '_')}_scene.lfp`
+              a.click()
+              URL.revokeObjectURL(url)
+            }}
+          >
+            <Download size={16} strokeWidth={2} aria-hidden />
+            Télécharger la scène
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm page-tabs-action"
+            onClick={() => {
+              const board = module.storedModuleInfo?.board ?? {}
+              let onOffCount = Math.max(0, parseInt(board['CHP'] ?? '0', 10))
+              let pwmCount = Math.max(0, parseInt(board['CHPWM'] ?? '0', 10))
+              if (onOffCount === 0 && pwmCount === 0) {
+                const maxOut = module.blocks.reduce((m, b) => Math.max(m, (b.outputIndex ?? 0) + 1), 0)
+                onOffCount = Math.max(1, maxOut)
+              }
+              const frameMs = 100
+              const durationMs = project.durationMinutes * 60 * 1000
+              const channelCount = onOffCount + pwmCount
+              const frameData = generateSceneFrames(module.blocks, durationMs, onOffCount, pwmCount, frameMs)
+              const lfp = buildLfp({ tickMs: frameMs, channelCount, frameData })
+              setUploadLfpBuffer(lfp)
+              setUploadLfpOpen(true)
+            }}
+          >
+            <Upload size={16} strokeWidth={2} aria-hidden />
+            Téléverser la scène
+          </button>
+        </div>
       </div>
 
       {uploadLfpOpen && (

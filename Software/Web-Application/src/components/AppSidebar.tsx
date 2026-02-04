@@ -23,9 +23,10 @@ export function AppSidebar() {
   const pathname = location.pathname
   const projectPathMatch = pathname.match(/^\/workspace\/([^/]+)\/project\/([^/]+)(?:\/|$)/)
   const workspacePathMatch = pathname.match(/^\/workspace\/([^/]+)(?:\/|$)/)
+  const modulePathMatch = pathname.match(/\/module\/([^/]+)(?:\/|$)/)
   const wsId = params.wsId ?? projectPathMatch?.[1] ?? workspacePathMatch?.[1] ?? ''
   const projectId = params.projectId ?? projectPathMatch?.[2] ?? ''
-  const moduleId = params.moduleId ?? pathname.match(/\/module\/([^/]+)(?:\/|$)/)?.[1] ?? ''
+  const moduleId = params.moduleId ?? modulePathMatch?.[1] ?? ''
   const [addModuleDialogOpen, setAddModuleDialogOpen] = useState(false)
   const [addModuleProjectId, setAddModuleProjectId] = useState<string>(projectId)
   const [addWithDetectedModule, setAddWithDetectedModule] = useState(false)
@@ -35,22 +36,29 @@ export function AppSidebar() {
   }, [projectId])
 
   const isHome = pathname === '/'
-  const isWorkspace = pathname.startsWith('/workspace/') && !pathname.includes('/project/')
-  const isProject = Boolean(wsId && projectId)
+  const isWorkspacePage = Boolean(wsId && !projectId)
+  const isProjectContext = Boolean(wsId && projectId)
 
   const workspace = wsId ? data.workspaces.find((w) => w.id === wsId) : null
   const projects = workspace
     ? data.projects.filter((p) => p.workspaceId === workspace.id)
     : []
-  const allProjects = data.projects
   const project = projectId ? data.projects.find((p) => p.id === projectId) : null
   const modules = project?.modules ?? []
 
   const digiKeyConnected = serialState === 'connected'
   const canScanDigiKey = isSupported && digiKeyConnected
 
-  const projectsForAdd = isHome ? allProjects : projects
-  const targetProjectId = isProject ? projectId! : ((addModuleProjectId || projectsForAdd[0]?.id) ?? '')
+  const targetProjectId = isProjectContext ? projectId : (addModuleProjectId || projects[0]?.id || '')
+
+  const projectsForDialog = project ? [project] : (workspace ? projects : [])
+  const defaultProjectIdForDialog = projectId || (projectsForDialog[0]?.id ?? '')
+  const detectedModuleNotInProject = connectedModuleSn && connectedModuleInfo && modulePresent
+    ? !modules.some((m) => getModuleSn(m) === connectedModuleSn)
+    : false
+  const detectedModuleStoredInfo = connectedModuleInfo
+    ? { board: connectedModuleInfo.board, config: connectedModuleInfo.config, s1Meta: connectedModuleInfo.s1Meta, s2Meta: connectedModuleInfo.s2Meta }
+    : undefined
 
   const addModuleButton = (
     <button
@@ -60,39 +68,46 @@ export function AppSidebar() {
         setAddWithDetectedModule(false)
         setAddModuleDialogOpen(true)
       }}
+      disabled={!targetProjectId}
     >
       Ajouter un module
     </button>
   )
 
-  if (isHome) {
-    return (
-      <aside className="app-sidebar">
-        <nav aria-label="Navigation">
-          <section>
-            <h3 className="sidebar-section-title">Accueil</h3>
-            <ul className="sidebar-list">
+  const workspaceLinkActive = isWorkspacePage
+  const projectLinkActive = Boolean(isProjectContext && !moduleId)
+
+  return (
+    <aside className="app-sidebar" aria-label="Sidebar">
+      <nav aria-label="Navigation">
+        <section className="sidebar-section">
+          <h3 className="sidebar-section-title">Navigation</h3>
+          <ul className="sidebar-list">
+            <li>
+              <Link to="/" className={`sidebar-link ${isHome ? 'sidebar-link-active' : ''}`}>
+                Espaces de travail
+              </Link>
+            </li>
+            {workspace && (
               <li>
-                <Link to="/" className="sidebar-link sidebar-link-active">
-                  Espaces de travail
+                <Link to={`/workspace/${workspace.id}`} className={`sidebar-link ${workspaceLinkActive ? 'sidebar-link-active' : ''}`}>
+                  {workspace.name}
                 </Link>
               </li>
-            </ul>
-          </section>
-        </nav>
-      </aside>
-    )
-  }
+            )}
+            {workspace && project && (
+              <li>
+                <Link to={`/workspace/${workspace.id}/project/${project.id}`} className={`sidebar-link ${projectLinkActive ? 'sidebar-link-active' : ''}`}>
+                  {project.name}
+                </Link>
+              </li>
+            )}
+          </ul>
+        </section>
 
-  if (isWorkspace && workspace) {
-    return (
-      <aside className="app-sidebar">
-        <nav aria-label="Projects navigation">
-          <section>
+        {isWorkspacePage && workspace && (
+          <section className="sidebar-section">
             <h3 className="sidebar-section-title">Projets</h3>
-            <Link to="/" className="sidebar-back-link">
-              Espaces de travail
-            </Link>
             {projects.length === 0 ? (
               <p className="sidebar-empty">Aucun projet</p>
             ) : (
@@ -100,8 +115,8 @@ export function AppSidebar() {
                 {projects.map((p) => (
                   <li key={p.id}>
                     <Link
-                      to={`/workspace/${wsId}/project/${p.id}`}
-                      className={`sidebar-link ${p.id === projectId ? 'sidebar-link-active' : ''}`}
+                      to={`/workspace/${workspace.id}/project/${p.id}`}
+                      className="sidebar-link"
                     >
                       {p.name}
                     </Link>
@@ -109,30 +124,17 @@ export function AppSidebar() {
                 ))}
               </ul>
             )}
+            <div className="sidebar-actions">
+              <Link to={`/workspace/${workspace.id}#create-project-heading`} className="btn btn-secondary btn-sm sidebar-action-link">
+                Créer un projet
+              </Link>
+            </div>
           </section>
-        </nav>
-      </aside>
-    )
-  }
+        )}
 
-  if (isProject) {
-    const projectsForDialog = project ? [project] : (workspace ? projects : [])
-    const defaultProjectIdForDialog = projectId ?? (projectsForDialog[0]?.id ?? '')
-    const detectedModuleNotInProject = connectedModuleSn && connectedModuleInfo && modulePresent
-      ? !modules.some((m) => getModuleSn(m) === connectedModuleSn)
-      : false
-    const detectedModuleStoredInfo = connectedModuleInfo
-      ? { board: connectedModuleInfo.board, config: connectedModuleInfo.config, s1Meta: connectedModuleInfo.s1Meta, s2Meta: connectedModuleInfo.s2Meta }
-      : undefined
-
-    return (
-      <aside className="app-sidebar">
-        <nav aria-label="Modules navigation">
-          <section>
+        {isProjectContext && workspace && project && (
+          <section className="sidebar-section">
             <h3 className="sidebar-section-title">Modules</h3>
-            <Link to={wsId ? `/workspace/${wsId}` : '/'} className="sidebar-back-link">
-              {workspace?.name ?? 'Espaces de travail'}
-            </Link>
             {modules.length === 0 ? (
               <p className="sidebar-empty">Aucun module</p>
             ) : (
@@ -143,13 +145,16 @@ export function AppSidebar() {
                   return (
                     <li key={m.id} className="sidebar-module-item">
                       <Link
-                        to={`/workspace/${wsId}/project/${projectId}/module/${m.id}`}
+                        to={`/workspace/${workspace.id}/project/${project.id}/module/${m.id}`}
                         className={`sidebar-link ${m.id === moduleId ? 'sidebar-link-active' : ''}`}
                       >
                         {m.name}
                       </Link>
                       {connectedModuleSn !== null && (
-                        <span className={`sidebar-module-status ${isConnected ? 'sidebar-module-status-connected' : 'sidebar-module-status-disconnected'}`} title={isConnected ? 'Module connecté au DigiKey' : isModuleAbsent ? 'Module absent (pas de réponse au ping)' : 'Autre module connecté'}>
+                        <span
+                          className={`sidebar-module-status ${isConnected ? 'sidebar-module-status-connected' : 'sidebar-module-status-disconnected'}`}
+                          title={isConnected ? 'Module connecté au DigiKey' : isModuleAbsent ? 'Module absent (pas de réponse au ping)' : 'Autre module connecté'}
+                        >
                           {isConnected ? 'Connecté' : isModuleAbsent ? 'Module absent' : 'Non connecté'}
                         </span>
                       )}
@@ -158,46 +163,40 @@ export function AppSidebar() {
                 })}
               </ul>
             )}
-            {detectedModuleNotInProject && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm sidebar-add-detected-btn"
-                onClick={() => {
-                  setAddModuleProjectId(projectId ?? '')
-                  setAddWithDetectedModule(true)
-                  setAddModuleDialogOpen(true)
-                }}
-              >
-                Module détecté, ajouter ?
-              </button>
-            )}
-            {addModuleButton}
-          </section>
-        </nav>
-        <AddModuleDialog
-          open={addModuleDialogOpen}
-          onClose={() => { setAddModuleDialogOpen(false); setAddWithDetectedModule(false) }}
-          projects={projectsForDialog}
-          defaultProjectId={defaultProjectIdForDialog}
-          modules={modules}
-          createModule={createModule}
-          updateModule={updateModule}
-          getModuleInfo={getModuleInfo}
-          canScanDigiKey={canScanDigiKey}
-          isSupported={isSupported}
-          initialScannedInfo={addWithDetectedModule ? detectedModuleStoredInfo : undefined}
-        />
-      </aside>
-    )
-  }
 
-  return (
-    <aside className="app-sidebar">
-      <nav aria-label="Navigation">
-        <Link to="/" className="sidebar-back-link">
-          Accueil
-        </Link>
+            <div className="sidebar-actions sidebar-actions-separated">
+              {detectedModuleNotInProject && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm sidebar-add-detected-btn"
+                  onClick={() => {
+                    setAddModuleProjectId(project.id)
+                    setAddWithDetectedModule(true)
+                    setAddModuleDialogOpen(true)
+                  }}
+                >
+                  Module détecté, ajouter ?
+                </button>
+              )}
+              {addModuleButton}
+            </div>
+          </section>
+        )}
       </nav>
+
+      <AddModuleDialog
+        open={addModuleDialogOpen}
+        onClose={() => { setAddModuleDialogOpen(false); setAddWithDetectedModule(false) }}
+        projects={projectsForDialog}
+        defaultProjectId={defaultProjectIdForDialog}
+        modules={modules}
+        createModule={createModule}
+        updateModule={updateModule}
+        getModuleInfo={getModuleInfo}
+        canScanDigiKey={canScanDigiKey}
+        isSupported={isSupported}
+        initialScannedInfo={addWithDetectedModule ? detectedModuleStoredInfo : undefined}
+      />
     </aside>
   )
 }
