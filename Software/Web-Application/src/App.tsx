@@ -18,6 +18,7 @@ import { UploadLfpDialog } from './components/UploadLfpDialog'
 import { dispatchUndo, dispatchRedo } from './lib/undoRedoEvents'
 import { AppSidebar } from './components/AppSidebar'
 import { DeleteModuleConfirmDialog } from './components/DeleteModuleConfirmDialog'
+import { ViewportSizeGuard } from './components/ViewportSizeGuard'
 import logoLumirail from '../assets/logo-lumirail.png'
 
 function AppShell({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell">
+      <ViewportSizeGuard enabled={import.meta.env.MODE !== 'test'} minWidth={1200} minHeight={670} />
       <header className="app-header">
         <Link to="/" className="app-header-brand">
           <img src={logoLumirail} alt="" className="app-header-logo" aria-hidden />
