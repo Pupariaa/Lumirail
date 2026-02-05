@@ -1,19 +1,21 @@
 node_modules/
 dist/
+coverage/
+
 *.log
-.DS_Store
 
-# Build outputs
-build/
-out/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Environment
 .env
-.env.local
+.env.*
+!.env.example
 
+.vscode/
+.cursor/
+
+_bmad/
+_bmad-output/
+
+test-output.txt
+*.tsbuildinfo
+
+webserialtest.html
+lfp-debug.html
