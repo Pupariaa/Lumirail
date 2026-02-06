@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Link, useParams, useNavigate } from 'react-router-dom'
-import { DataProvider, useData, SerialProvider, useSerial } from './context'
+import { DataProvider, useData, SerialProvider, useSerial, HelpProvider } from './context'
 import { SceneTimeline } from './components/SceneTimeline'
 import { NameEditDialog } from './components/NameEditDialog'
 import { NumberEditDialog } from './components/NumberEditDialog'
@@ -14,6 +14,7 @@ import { UploadLfpDialog } from './components/UploadLfpDialog'
 import { dispatchUndo, dispatchRedo } from './lib/undoRedoEvents'
 import { AppSidebar } from './components/AppSidebar'
 import { SettingsPage } from './pages/SettingsPage'
+import { HelpPage } from './pages/HelpPage'
 import { DeleteModuleConfirmDialog } from './components/DeleteModuleConfirmDialog'
 import { SerialPortDialog } from './components/SerialPortDialog'
 import { ViewportSizeGuard } from './components/ViewportSizeGuard'
@@ -150,11 +151,13 @@ function HomePageWithData() {
   return (
     <DataProvider userId={LOCAL_USER_ID}>
       <AppShell>
+        <HelpProvider>
         <div className="app-body">
           <AppSidebar />
           <main className="app-main">
             <Routes>
               <Route path="/" element={<HomePage />} />
+              <Route path="/help" element={<HelpPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/workspace/:wsId" element={<WorkspacePage />} />
               <Route path="/workspace/:wsId/project/:projectId" element={<ProjectPage />} />
@@ -162,6 +165,7 @@ function HomePageWithData() {
             </Routes>
           </main>
         </div>
+        </HelpProvider>
       </AppShell>
     </DataProvider>
   )
