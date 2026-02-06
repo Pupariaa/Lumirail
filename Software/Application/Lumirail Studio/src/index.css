@@ -328,6 +328,9 @@ body {
   padding: var(--spacing-md);
   border-top: 1px solid var(--border-subtle);
   background: rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
 }
 
 .sidebar-params-link {
@@ -2033,12 +2036,186 @@ body {
   color: var(--accent-primary);
 }
 
+.help-page,
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-xl);
+  scrollbar-width: none;
+}
+
+.help-page::-webkit-scrollbar,
+.settings-page::-webkit-scrollbar {
+  display: none;
+}
+
+.help-section {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  background: rgba(23, 26, 34, 0.5);
+  scroll-margin-top: var(--spacing-md);
+}
+
+.help-intention-list {
+  margin: 0;
+  padding: 0;
+}
+
+.help-intention-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.help-intention-row:last-child {
+  border-bottom: none;
+}
+
+.help-intention-row dt {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.help-intention-row dd {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.help-pwm-badge {
+  display: inline-block;
+  margin-left: var(--spacing-xs);
+  padding: 2px 6px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-primary);
+  background: rgba(124, 156, 247, 0.15);
+  border-radius: var(--radius-sm);
+}
+
+.help-section .section-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.help-intro {
+  margin: 0 0 var(--spacing-lg);
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+}
+
+.help-subsection {
+  margin-bottom: var(--spacing-lg);
+}
+
+.help-subsection:last-child {
+  margin-bottom: 0;
+}
+
+.help-subsection h3 {
+  margin: 0 0 var(--spacing-sm);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.help-subsection p {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.help-shortcut-list,
+.help-glossary {
+  margin: 0;
+  padding: 0;
+}
+
+.help-shortcut-row,
+.help-glossary-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.help-shortcut-row:last-child,
+.help-glossary-row:last-child {
+  border-bottom: none;
+}
+
+.help-shortcut-row dt,
+.help-glossary-row dt {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.help-shortcut-row dd,
+.help-glossary-row dd {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.help-shortcut-row kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm);
+}
+
 .settings-section {
   margin-top: var(--spacing-xl);
   padding: var(--spacing-xl);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-lg);
   background: rgba(23, 26, 34, 0.5);
+  scroll-margin-top: var(--spacing-md);
+}
+
+.settings-section .section-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: 0 0 var(--spacing-md);
+}
+
+.settings-licence-text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.settings-list-mono .settings-row dd {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+.settings-muted {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
 }
 
 .settings-list {
@@ -5468,34 +5645,108 @@ body {
   background: var(--bg-panel);
   border-radius: var(--radius-lg);
   padding: var(--spacing-2xl);
-  max-width: 420px;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
   box-shadow: var(--shadow-lg);
 }
+
+.tutorial-step-indicator {
+  margin: 0 0 var(--spacing-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
 .tutorial-title {
   margin: 0 0 var(--spacing-md);
   font-size: 1.25rem;
   font-weight: 600;
 }
+
+.tutorial-content {
+  margin-bottom: var(--spacing-lg);
+}
+
 .tutorial-desc {
-  margin: 0 0 var(--spacing-lg);
+  margin: 0 0 var(--spacing-sm);
+  font-size: 0.9375rem;
+  line-height: 1.5;
   color: var(--text-secondary);
 }
+
+.tutorial-desc:last-of-type {
+  margin-bottom: 0;
+}
+
+.tutorial-tip {
+  margin: var(--spacing-md) 0 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  background: rgba(124, 156, 247, 0.1);
+  border-left: 3px solid var(--accent-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.tutorial-tip-label {
+  display: block;
+  margin-bottom: 2px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-primary);
+}
+
 .tutorial-progress {
   display: flex;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-lg);
 }
+
 .tutorial-dot {
   width: 8px;
   height: 8px;
+  padding: 0;
+  border: none;
   border-radius: 50%;
   background: var(--border-default);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
 }
+
+.tutorial-dot:hover {
+  background: rgba(124, 156, 247, 0.4);
+  transform: scale(1.15);
+}
+
 .tutorial-dot-active {
   background: var(--accent-primary);
 }
+
+.tutorial-dot-active:hover {
+  background: var(--accent-primary);
+}
+
 .tutorial-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.tutorial-nav {
+  display: flex;
+  align-items: center;
   gap: var(--spacing-sm);
+}
+
+.tutorial-btn-next {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
