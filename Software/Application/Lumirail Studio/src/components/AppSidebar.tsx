@@ -1,10 +1,13 @@
 import { useState, useContext, useEffect } from 'react'
 import { Link, useParams, useLocation } from 'react-router-dom'
 import { useData } from '../context/useData'
+import { useHelp } from '../context/useHelp'
 import { SerialContext } from '../context/serialContext'
 import { AddModuleDialog } from './AddModuleDialog'
-import { Plus, Plug, Settings } from 'lucide-react'
+import { Plus, Plug, Settings, HelpCircle } from 'lucide-react'
 import type { Module } from '../data'
+import { HELP_SECTIONS } from '../lib/helpSections'
+import { SETTINGS_SECTIONS } from '../lib/settingsSections'
 
 function getModuleSn(m: Module): string {
   return (m.storedModuleInfo?.board?.['SN'] ?? m.name ?? '').trim()
@@ -29,6 +32,7 @@ export function AppSidebar() {
   const params = useParams<{ wsId?: string; projectId?: string; moduleId?: string }>()
   const location = useLocation()
   const pathname = location.pathname
+  const { activeSectionId } = useHelp()
   const projectPathMatch = pathname.match(/^\/workspace\/([^/]+)\/project\/([^/]+)(?:\/|$)/)
   const workspacePathMatch = pathname.match(/^\/workspace\/([^/]+)(?:\/|$)/)
   const modulePathMatch = pathname.match(/\/module\/([^/]+)(?:\/|$)/)
@@ -42,6 +46,8 @@ export function AppSidebar() {
     if (!projectId) setAddWithDetectedModule(false)
   }, [projectId])
 
+  const isHelpPage = pathname === '/help'
+  const isSettingsPage = pathname === '/settings'
   const isHome = pathname === '/'
   const isWorkspacePage = Boolean(wsId && !projectId)
   const isProjectContext = Boolean(wsId && projectId)
@@ -71,7 +77,41 @@ export function AppSidebar() {
     <aside className="app-sidebar" aria-label="Sidebar">
       <div className="sidebar-scroll">
       <nav aria-label="Navigation">
-        {isHome && (
+        {isHelpPage && (
+          <section className="sidebar-section">
+            <h3 className="sidebar-section-title">Centre d&apos;aide</h3>
+            <ul className="sidebar-list">
+              {HELP_SECTIONS.map((s) => (
+                <li key={s.id}>
+                  <Link
+                    to={`/help#${s.id}`}
+                    className={`sidebar-link ${s.id === activeSectionId ? 'sidebar-link-active' : ''}`}
+                  >
+                    {s.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {isSettingsPage && (
+          <section className="sidebar-section">
+            <h3 className="sidebar-section-title">Paramètres</h3>
+            <ul className="sidebar-list">
+              {SETTINGS_SECTIONS.map((s) => (
+                <li key={s.id}>
+                  <Link
+                    to={`/settings#${s.id}`}
+                    className={`sidebar-link ${s.id === activeSectionId ? 'sidebar-link-active' : ''}`}
+                  >
+                    {s.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {!isHelpPage && !isSettingsPage && isHome && (
           <section className="sidebar-section">
             <h3 className="sidebar-section-title">Espaces de travail</h3>
             {data.workspaces.length === 0 ? (
@@ -90,7 +130,7 @@ export function AppSidebar() {
           </section>
         )}
 
-        {isWorkspacePage && workspace && (
+        {!isHelpPage && isWorkspacePage && workspace && (
           <section className="sidebar-section">
             <h3 className="sidebar-section-title">Projets</h3>
             {projects.length === 0 ? (
@@ -120,7 +160,7 @@ export function AppSidebar() {
           </section>
         )}
 
-        {isProjectContext && workspace && project && (
+        {!isHelpPage && !isSettingsPage && isProjectContext && workspace && project && (
           <section className="sidebar-section">
             <div className="sidebar-section-title-row">
               <h3 className="sidebar-section-title">Modules</h3>
@@ -176,7 +216,13 @@ export function AppSidebar() {
       </nav>
       </div>
 
-      <section className="sidebar-params" aria-label="Paramètres du logiciel">
+      <section className="sidebar-params" aria-label="Aide et paramètres">
+        <Link to="/help" className="sidebar-params-link">
+          <span className="sidebar-params-title">
+            <HelpCircle size={12} strokeWidth={2.5} aria-hidden />
+            Aide
+          </span>
+        </Link>
         <Link to="/settings" className="sidebar-params-link">
           <span className="sidebar-params-title">
             <Settings size={12} strokeWidth={2.5} aria-hidden />
