@@ -1,13 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Download, Upload, Trash2 } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ArrowLeft, Download, Upload, Trash2, Info, FileText, Cpu } from 'lucide-react'
 import { useData } from '../context/useData'
+import { useHelp } from '../context/useHelp'
 import { getSoundsEnabled, setSoundsEnabled, setTutorialDismissed, getDefaultProjectDuration, setDefaultProjectDuration } from '../lib/preferences'
 import { DURATION_MIN, DURATION_MAX } from '../data'
+import { SETTINGS_SECTIONS } from '../lib/settingsSections'
 
 export function SettingsPage() {
   const navigate = useNavigate()
+  const { hash } = useLocation()
   const { data, exportData, importData, clearAllData } = useData()
+  const { setActiveSectionId } = useHelp()
+  const containerRef = useRef<HTMLDivElement>(null)
   const [soundsEnabled, setSoundsEnabledState] = useState(true)
   const [defaultDuration, setDefaultDurationState] = useState(10)
   const [clearConfirm, setClearConfirm] = useState(false)
@@ -18,6 +23,53 @@ export function SettingsPage() {
     setSoundsEnabledState(getSoundsEnabled())
     setDefaultDurationState(getDefaultProjectDuration())
   }, [])
+
+  useEffect(() => {
+    if (!hash) return
+    const id = hash.slice(1)
+    setActiveSectionId(id)
+    const container = containerRef.current
+    const el = document.getElementById(id)
+    if (!container || !el) return
+    requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect()
+      const containerRect = container.getBoundingClientRect()
+      const scrollTop = container.scrollTop + rect.top - containerRect.top - 16
+      container.scrollTo({ top: Math.max(0, scrollTop), behavior: 'smooth' })
+    })
+  }, [hash, setActiveSectionId])
+
+  useEffect(() => {
+    return () => setActiveSectionId(null)
+  }, [setActiveSectionId])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const ids = SETTINGS_SECTIONS.map((s) => s.id)
+    const elements = ids.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => !!el)
+    if (elements.length === 0) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting)
+        if (visible.length === 0) return
+        const topmost = visible.reduce((a, b) =>
+          (a.boundingClientRect.top < b.boundingClientRect.top ? a : b)
+        )
+        const id = topmost.target.id
+        if (ids.includes(id)) setActiveSectionId(id)
+      },
+      {
+        root: container,
+        rootMargin: '-10% 0px -70% 0px',
+        threshold: 0,
+      }
+    )
+
+    elements.forEach((el) => observer.observe(el))
+    return () => elements.forEach((el) => observer.unobserve(el))
+  }, [setActiveSectionId])
 
   const handleSoundsToggle = () => {
     const next = !soundsEnabled
@@ -85,9 +137,16 @@ export function SettingsPage() {
 
   const version = import.meta.env.VITE_APP_VERSION ?? '0.1.0'
   const isDesktop = typeof window !== 'undefined' && !!window.electronSerial
+  const buildMode = import.meta.env.MODE ?? 'development'
+
+  const systemInfo = typeof navigator !== 'undefined' ? {
+    platform: navigator.platform,
+    language: navigator.language,
+    screenSize: typeof screen !== 'undefined' ? `${screen.width}x${screen.height}` : '-',
+  } : null
 
   return (
-    <div className="app-layout home-layout">
+    <div ref={containerRef} className="app-layout home-layout settings-page">
       <header className="home-hero" aria-label="Paramètres">
         <Link to="/" className="settings-back-link">
           <ArrowLeft size={18} strokeWidth={2.5} aria-hidden />
@@ -102,8 +161,11 @@ export function SettingsPage() {
         </div>
       </header>
 
-      <section className="settings-section" aria-labelledby="settings-about">
-        <h2 id="settings-about" className="section-heading">À propos</h2>
+      <section className="settings-section" id="settings-about" aria-labelledby="settings-about-heading">
+        <h2 id="settings-about-heading" className="section-heading">
+          <Info size={20} strokeWidth={2} aria-hidden />
+          À propos
+        </h2>
         <dl className="settings-list">
           <div className="settings-row">
             <dt>Version</dt>
@@ -113,11 +175,23 @@ export function SettingsPage() {
             <dt>Mode</dt>
             <dd>{isDesktop ? 'Desktop' : 'Web'}</dd>
           </div>
+          <div className="settings-row">
+            <dt>Build</dt>
+            <dd>{buildMode}</dd>
+          </div>
+          <div className="settings-row">
+            <dt>Aide</dt>
+            <dd>
+              <Link to="/help" className="btn btn-ghost btn-sm">
+                Centre d&apos;aide
+              </Link>
+            </dd>
+          </div>
         </dl>
       </section>
 
-      <section className="settings-section" aria-labelledby="settings-params">
-        <h2 id="settings-params" className="section-heading">Paramètres</h2>
+      <section className="settings-section" id="settings-params" aria-labelledby="settings-params-heading">
+        <h2 id="settings-params-heading" className="section-heading">Parametres</h2>
         <div className="settings-list">
           <div className="settings-row settings-row-toggle">
             <dt>Sons</dt>
@@ -157,15 +231,15 @@ export function SettingsPage() {
                 className="btn btn-secondary btn-sm"
                 onClick={handleShowTutorial}
               >
-                Réafficher le tutoriel
+                Reafficher le tutoriel
               </button>
             </dd>
           </div>
         </div>
       </section>
 
-      <section className="settings-section" aria-labelledby="settings-data">
-        <h2 id="settings-data" className="section-heading">Données</h2>
+      <section className="settings-section" id="settings-data" aria-labelledby="settings-data-heading">
+        <h2 id="settings-data-heading" className="section-heading">Donnees</h2>
         <div className="settings-list">
           <div className="settings-row">
             <dt>Export</dt>
@@ -230,6 +304,41 @@ export function SettingsPage() {
             </dd>
           </div>
         </div>
+      </section>
+
+      <section className="settings-section" id="settings-licence" aria-labelledby="settings-licence-heading">
+        <h2 id="settings-licence-heading" className="section-heading">
+          <FileText size={20} strokeWidth={2} aria-hidden />
+          Licence
+        </h2>
+        <p className="settings-licence-text">
+          Lumirail Studio est un logiciel propriétaire développé par Lumirail. Les données créées (espaces, projets, modules, scènes) sont stockées localement sur votre appareil.
+        </p>
+      </section>
+
+      <section className="settings-section" id="settings-system" aria-labelledby="settings-system-heading">
+        <h2 id="settings-system-heading" className="section-heading">
+          <Cpu size={20} strokeWidth={2} aria-hidden />
+          Informations système
+        </h2>
+        {systemInfo ? (
+          <dl className="settings-list settings-list-mono">
+            <div className="settings-row">
+              <dt>Plateforme</dt>
+              <dd>{systemInfo.platform}</dd>
+            </div>
+            <div className="settings-row">
+              <dt>Langue</dt>
+              <dd>{systemInfo.language}</dd>
+            </div>
+            <div className="settings-row">
+              <dt>Resolution</dt>
+              <dd>{systemInfo.screenSize}</dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="settings-muted">Non disponible</p>
+        )}
       </section>
     </div>
   )
