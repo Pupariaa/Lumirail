@@ -1,3 +1,0 @@
-scene_active:1;
-SOP:0;
-SOT:0;
