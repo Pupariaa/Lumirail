@@ -4,10 +4,11 @@ import { useData } from '../context/useData'
 import { useHelp } from '../context/useHelp'
 import { SerialContext } from '../context/serialContext'
 import { AddModuleDialog } from './AddModuleDialog'
-import { Plus, Plug, Settings, HelpCircle } from 'lucide-react'
+import { Plus, Plug, Settings, HelpCircle, RadioTower } from 'lucide-react'
 import type { Module } from '../data'
 import { HELP_SECTIONS } from '../lib/helpSections'
 import { SETTINGS_SECTIONS } from '../lib/settingsSections'
+import { GATEWAY_SECTIONS } from '../lib/gatewaySections'
 
 function getModuleSn(m: Module): string {
   return (m.storedModuleInfo?.board?.['SN'] ?? m.name ?? '').trim()
@@ -48,6 +49,7 @@ export function AppSidebar() {
 
   const isHelpPage = pathname === '/help'
   const isSettingsPage = pathname === '/settings'
+  const isGatewayPage = pathname === '/gateway'
   const isHome = pathname === '/'
   const isWorkspacePage = Boolean(wsId && !projectId)
   const isProjectContext = Boolean(wsId && projectId)
@@ -111,7 +113,24 @@ export function AppSidebar() {
             </ul>
           </section>
         )}
-        {!isHelpPage && !isSettingsPage && isHome && (
+        {isGatewayPage && (
+          <section className="sidebar-section">
+            <h3 className="sidebar-section-title">Passerelle</h3>
+            <ul className="sidebar-list">
+              {GATEWAY_SECTIONS.map((s) => (
+                <li key={s.id}>
+                  <Link
+                    to={`/gateway#${s.id}`}
+                    className={`sidebar-link ${s.id === activeSectionId ? 'sidebar-link-active' : ''}`}
+                  >
+                    {s.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {!isHelpPage && !isSettingsPage && !isGatewayPage && isHome && (
           <section className="sidebar-section">
             <h3 className="sidebar-section-title">Espaces de travail</h3>
             {data.workspaces.length === 0 ? (
@@ -130,7 +149,7 @@ export function AppSidebar() {
           </section>
         )}
 
-        {!isHelpPage && isWorkspacePage && workspace && (
+        {!isHelpPage && !isGatewayPage && isWorkspacePage && workspace && (
           <section className="sidebar-section">
             <h3 className="sidebar-section-title">Projets</h3>
             {projects.length === 0 ? (
@@ -160,7 +179,7 @@ export function AppSidebar() {
           </section>
         )}
 
-        {!isHelpPage && !isSettingsPage && isProjectContext && workspace && project && (
+        {!isHelpPage && !isSettingsPage && !isGatewayPage && isProjectContext && workspace && project && (
           <section className="sidebar-section">
             <div className="sidebar-section-title-row">
               <h3 className="sidebar-section-title">Modules</h3>
@@ -217,6 +236,12 @@ export function AppSidebar() {
       </div>
 
       <section className="sidebar-params" aria-label="Aide et paramètres">
+        <Link to="/gateway" className="sidebar-params-link">
+          <span className="sidebar-params-title">
+            <RadioTower size={12} strokeWidth={2.5} aria-hidden />
+            Passerelle
+          </span>
+        </Link>
         <Link to="/help" className="sidebar-params-link">
           <span className="sidebar-params-title">
             <HelpCircle size={12} strokeWidth={2.5} aria-hidden />

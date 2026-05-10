@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { serialConnection } from '../serial'
 import { createElectronSerialAdapter } from '../serial/electronSerialAdapter'
 import { playSuccess, playError } from '../lib/sounds'
-import type { SerialConnectionState, ModuleInfo } from '../serial'
+import type { SerialConnectionState, ModuleInfo, DeviceKind } from '../serial'
 import { SerialContext } from './serialContext'
 
 const isDesktop = typeof window !== 'undefined' && !!window.electronSerial
 
 export function SerialProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SerialConnectionState>(serialConnection.getState())
+  const [deviceKind, setDeviceKind] = useState<DeviceKind>(serialConnection.getDeviceKind())
   const [error, setError] = useState<string | null>(null)
   const [connectedModuleSn, setConnectedModuleSn] = useState<string | null>(null)
   const [connectedModuleInfo, setConnectedModuleInfo] = useState<ModuleInfo | null>(null)
@@ -49,6 +50,14 @@ export function SerialProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (state === 'connected') setError(null)
     if (state !== 'connected') {
+      setDeviceKind('bridge')
+      setConnectedModuleSn(null)
+      setConnectedModuleInfo(null)
+      setModulePresent(false)
+      return
+    }
+    setDeviceKind(serialConnection.getDeviceKind())
+    if (serialConnection.getDeviceKind() === 'gateway') {
       setConnectedModuleSn(null)
       setConnectedModuleInfo(null)
       setModulePresent(false)
@@ -75,6 +84,7 @@ export function SerialProvider({ children }: { children: ReactNode }) {
     return serialConnection.subscribeModulePresence((present) => {
       setModulePresent(present)
       if (!present) return
+      if (serialConnection.getDeviceKind() === 'gateway') return
       if (connectedModuleInfoRef.current !== null) return
       serialConnection.getModuleInfo().then((info) => {
         const sn = (info.board['SN'] ?? '').trim()
@@ -186,6 +196,7 @@ export function SerialProvider({ children }: { children: ReactNode }) {
 
   const value = {
     state,
+    deviceKind,
     connect,
     disconnect,
     getBoardSerial,

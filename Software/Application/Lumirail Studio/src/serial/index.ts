@@ -1,5 +1,6 @@
 export { serialConnection, estimateUploadTimeMs, LFP_BLOCK_SIZE } from './serialConnection'
-export type { ModuleInfo, UploadSceneOptions, UploadLfpOptions } from './serialConnection'
+export type { ModuleInfo, UploadSceneOptions, UploadLfpOptions, DeviceKind } from './serialConnection'
+export type { GatewayHardwareTelemetry } from '../data/gatewayTelemetry'
 export { isValidModuleSerial } from './moduleSerial'
 export type { SerialConnectionState, SerialPort } from './types'
 export type { PortLike } from './serialConnection'

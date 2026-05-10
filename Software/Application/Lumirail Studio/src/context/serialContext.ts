@@ -1,8 +1,9 @@
 import { createContext } from 'react'
-import type { SerialConnectionState, ModuleInfo, UploadSceneOptions, UploadLfpOptions } from '../serial'
+import type { SerialConnectionState, ModuleInfo, UploadSceneOptions, UploadLfpOptions, DeviceKind } from '../serial'
 
 export interface SerialContextValue {
   state: SerialConnectionState
+  deviceKind: DeviceKind
   connect: () => Promise<void>
   disconnect: () => Promise<void>
   getBoardSerial: () => Promise<string>

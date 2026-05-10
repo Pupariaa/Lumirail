@@ -13,11 +13,25 @@ interface SerialPortDialogProps {
   open: boolean
   portList: SerialPortOption[]
   loading?: boolean
+  title?: string
+  hint?: string
+  emptyLabel?: string
+  listLabel?: string
   onSelect: (path: string) => void
   onCancel: () => void
 }
 
-export function SerialPortDialog({ open, portList, loading = false, onSelect, onCancel }: SerialPortDialogProps) {
+export function SerialPortDialog({
+  open,
+  portList,
+  loading = false,
+  title = 'USB série',
+  hint,
+  emptyLabel = 'Branchez un appareil Espressif (DigiKey ou passerelle).',
+  listLabel = 'Ports USB série',
+  onSelect,
+  onCancel,
+}: SerialPortDialogProps) {
   useEffect(() => {
     if (!open) return
     const onKeyDown = (e: KeyboardEvent) => {
@@ -49,10 +63,14 @@ export function SerialPortDialog({ open, portList, loading = false, onSelect, on
         data-state={state}
       >
         <h2 id="serial-port-dialog-title" className="serial-port-dialog-title">
-          Connecter le DigiKey
+          {title}
         </h2>
         <p className="serial-port-dialog-message">
-          {loading ? 'Recherche des périphériques…' : portList.length === 0 ? 'Branchez le DigiKey à votre ordinateur.' : 'Choisir le port série'}
+          {loading
+            ? 'Recherche des périphériques…'
+            : portList.length === 0
+              ? emptyLabel
+              : (hint ?? 'Choisir le port')}
         </p>
         {loading ? (
           <div className="serial-port-dialog-loading" aria-busy="true">
@@ -62,10 +80,10 @@ export function SerialPortDialog({ open, portList, loading = false, onSelect, on
         ) : portList.length === 0 ? (
           <div className="serial-port-dialog-empty">
             <Plug className="serial-port-dialog-empty-icon" aria-hidden />
-            <span>Aucun DigiKey détecté</span>
+            <span>Aucun port Espressif détecté</span>
           </div>
         ) : (
-          <ul className="serial-port-dialog-list" aria-label="Ports DigiKey">
+          <ul className="serial-port-dialog-list" aria-label={listLabel}>
             {portList.map((port) => (
               <li key={port.path}>
                 <button

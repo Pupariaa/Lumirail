@@ -1,0 +1,18 @@
+appId: com.lumirail.studio
+productName: Lumirail Studio
+publish:
+  provider: generic
+  url: https://lumirail.fr/software/update
+directories:
+  output: dist
+
+win:
+  target: nsis
+
+mac:
+  target:
+    - dmg
+    - zip
+
+linux:
+  target: AppImage

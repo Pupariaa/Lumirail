@@ -1,8 +1,7 @@
 import { SerialPort } from 'serialport'
 import { BrowserWindow } from 'electron'
 
-const DIGIKEY_VID = '303a'
-const DIGIKEY_PID = '1001'
+const ESPRESSIF_USB_VID = '303a'
 const BAUD_RATE = 115200
 const POLL_INTERVAL_MS = 2500
 const INIT_DELAY_MS = 100
@@ -31,14 +30,11 @@ function normalizeHex(s) {
   return s.trim().toLowerCase().replace(/^0x/, '')
 }
 
-function matchVidPid(port) {
+function matchEspressifUsb(port) {
   const vid = normalizeHex(port.vendorId ?? '')
-  const pid = normalizeHex(port.productId ?? '')
-  if (vid === DIGIKEY_VID && (pid === DIGIKEY_PID || (pid.length >= 4 && pid.endsWith('1001')))) return true
+  if (vid === ESPRESSIF_USB_VID) return true
   const pnpId = (port.pnpId ?? '').toUpperCase().replace(/\\/g, '&')
-  if (pnpId.includes('VID_303A') && pnpId.includes('PID_1001')) return true
-  if (pnpId.includes('VID_303A') && pnpId.includes('1001')) return true
-  return false
+  return pnpId.includes('VID_303A')
 }
 
 function closePort() {
@@ -115,7 +111,7 @@ async function tryConnect() {
   isConnecting = true
   try {
     const ports = await SerialPort.list()
-    const candidate = ports.find(matchVidPid)
+    const candidate = ports.find(matchEspressifUsb)
     if (!candidate) {
       isConnecting = false
       return
@@ -138,12 +134,18 @@ function startPolling() {
 
 export async function listDigiKeyPorts() {
   const ports = await SerialPort.list()
-  return ports.filter(matchVidPid).map((p) => ({
-    path: p.path,
-    portId: p.path,
-    displayName: `DigiKey (${p.path})`,
-    portName: p.path,
-  }))
+  return ports.filter(matchEspressifUsb).map((p) => {
+    const vid = normalizeHex(p.vendorId ?? '')
+    const pid = normalizeHex(p.productId ?? '')
+    const tag = vid && pid ? `${vid}:${pid}` : 'Espressif'
+    const label = p.manufacturer ? `${p.manufacturer} (${tag})` : `Espressif USB (${tag})`
+    return {
+      path: p.path,
+      portId: p.path,
+      displayName: `${label} — ${p.path}`,
+      portName: p.path,
+    }
+  })
 }
 
 export async function connectToPath(path) {

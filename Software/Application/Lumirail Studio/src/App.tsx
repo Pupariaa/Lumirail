@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Link, useParams, useNavigate } from 'react-router-dom'
-import { DataProvider, useData, SerialProvider, useSerial, HelpProvider } from './context'
+import { DataProvider, useData, SerialProvider, useSerial, HelpProvider, ProjectStorageProvider } from './context'
 import { SceneTimeline } from './components/SceneTimeline'
 import { NameEditDialog } from './components/NameEditDialog'
 import { NumberEditDialog } from './components/NumberEditDialog'
@@ -15,6 +15,7 @@ import { dispatchUndo, dispatchRedo } from './lib/undoRedoEvents'
 import { AppSidebar } from './components/AppSidebar'
 import { SettingsPage } from './pages/SettingsPage'
 import { HelpPage } from './pages/HelpPage'
+import { GatewayPage } from './pages/GatewayPage'
 import { DeleteModuleConfirmDialog } from './components/DeleteModuleConfirmDialog'
 import { SerialPortDialog } from './components/SerialPortDialog'
 import { ViewportSizeGuard } from './components/ViewportSizeGuard'
@@ -22,7 +23,7 @@ import { TutorialOverlay } from './components/TutorialOverlay'
 import logoLumirail from '../assets/logo-lumirail.png'
 
 function AppShell({ children }: { children: React.ReactNode }) {
-  const { state: serialState, connect, disconnect, isSupported, error, clearError } = useSerial()
+  const { state: serialState, deviceKind, connect, disconnect, isSupported, error, clearError } = useSerial()
   const [connecting, setConnecting] = useState(false)
   const [serialDialogOpen, setSerialDialogOpen] = useState(false)
   const [serialPortList, setSerialPortList] = useState<{ path: string; portId: string; displayName?: string; portName?: string }[] | null>(null)
@@ -73,10 +74,12 @@ function AppShell({ children }: { children: React.ReactNode }) {
 
   const digiKeyLabel =
     serialState === 'connected'
-      ? 'DigiKey connecté'
+      ? deviceKind === 'gateway'
+        ? 'Passerelle connectée'
+        : 'Pont module connecté'
       : serialState === 'connecting' || connecting
         ? 'Connexion…'
-        : 'Connecter DigiKey'
+        : 'Connecter USB'
   const digiKeyDisabled = !isSupported || serialState === 'connecting' || connecting
   const showConnectButton = serialState !== 'connected'
   const showDisconnectButton = serialState === 'connected'
@@ -96,7 +99,13 @@ function AppShell({ children }: { children: React.ReactNode }) {
                 className={`app-header-digikey-status ${serialState === 'connected' ? 'app-header-digikey-connected' : ''}`}
                 aria-live="polite"
               >
-                {serialState === 'connected' ? 'Connecté' : serialState === 'connecting' || connecting ? 'Connexion…' : 'Déconnecté'}
+                {serialState === 'connected'
+                  ? deviceKind === 'gateway'
+                    ? 'Passerelle'
+                    : 'Pont module'
+                  : serialState === 'connecting' || connecting
+                    ? 'Connexion…'
+                    : 'Déconnecté'}
               </span>
               {showDisconnectButton ? (
                 <button
@@ -105,7 +114,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={handleDisconnect}
                   disabled={connecting}
                 >
-                  Déconnecter DigiKey
+                  Déconnecter USB
                 </button>
               ) : showConnectButton ? (
                 <button
@@ -121,7 +130,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
             </>
           ) : (
             <span className="app-header-digikey-unsupported" title="Web Serial non supporté">
-              DigiKey non disponible
+              USB série non disponible
             </span>
           )}
           {error && (
@@ -136,6 +145,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
           open={serialDialogOpen}
           portList={serialPortList ?? []}
           loading={serialPortList === null}
+          title="Connexion USB"
           onSelect={handleSerialPortSelect}
           onCancel={handleSerialPortCancel}
         />
@@ -158,6 +168,7 @@ function HomePageWithData() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/help" element={<HelpPage />} />
+              <Route path="/gateway" element={<GatewayPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/workspace/:wsId" element={<WorkspacePage />} />
               <Route path="/workspace/:wsId/project/:projectId" element={<ProjectPage />} />
@@ -1223,12 +1234,14 @@ function App() {
 
   return (
     <SerialProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/*" element={<HomePageWithData />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <ProjectStorageProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/*" element={<HomePageWithData />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ProjectStorageProvider>
     </SerialProvider>
   )
 }

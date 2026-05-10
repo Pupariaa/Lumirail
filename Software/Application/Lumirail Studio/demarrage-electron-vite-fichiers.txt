@@ -1,0 +1,221 @@
+Lumirail Studio — démarrage Electron + Vite (liste des fichiers et dépendances)
+================================================================================
+
+1. Commande typique (développement)
+-----------------------------------
+npm run electron:dev
+
+Équivalent à :
+- Vite : cross-env VITE_DESKTOP=1 vite --port 9000
+- Electron : wait-on http://localhost:9000 puis NODE_ENV=development electron .
+
+
+2. Point d’entrée Node / Electron (package.json)
+-------------------------------------------------
+package.json (champ "main")
+electron/main.mjs
+electron/preload.cjs
+electron/serialBridge.mjs
+
+
+3. Chaîne d’exécution processus principal
+-----------------------------------------
+electron/main.mjs
+  importe : node:path, node:url, node:fs/promises, electron, ./serialBridge.mjs
+
+electron/serialBridge.mjs
+  importe : serialport (module natif npm), electron (BrowserWindow)
+
+electron/preload.cjs
+  importe : electron (contextBridge, ipcRenderer)
+  (chargé par Chromium pour chaque fenêtre, avant le contenu de la page)
+
+
+4. Configuration build / serveur Vite
+--------------------------------------
+vite.config.ts
+  lit : package.json (version pour VITE_APP_VERSION)
+
+tsconfig.json
+tsconfig.node.json
+
+index.html
+  (servi à la racine URL / en dev)
+
+
+5. Ordre de chargement côté renderer (première navigation)
+------------------------------------------------------------
+GET / → index.html
+
+Puis le navigateur charge notamment :
+- Feuilles de style Google Fonts (réseau, URLs dans index.html)
+- /assets/loader_animated.png
+- /src/main.tsx (module, transformé à la volée par Vite)
+
+
+6. Point d’entrée application React
+-----------------------------------
+src/main.tsx
+  importe : react, react-dom/client, ./index.css, ./App
+
+src/index.css
+
+src/App.tsx
+  (importe tout le graphe de l’UI : contextes, pages, composants, libs, etc.)
+
+
+7. Liste complète des fichiers source applicatifs (dossier src/)
+----------------------------------------------------------------
+src/App.tsx
+src/auth/index.ts
+src/auth/login.ts
+src/auth/password-reset.ts
+src/auth/rate-limit.ts
+src/auth/registration.ts
+src/auth/storage-utils.ts
+src/auth/types.ts
+src/auth/validation.ts
+src/components/AddModuleDialog.tsx
+src/components/AppSidebar.tsx
+src/components/DeleteModuleConfirmDialog.tsx
+src/components/DurationEditDialog.tsx
+src/components/IntentionPickerDialog.tsx
+src/components/MainTimeline.tsx
+src/components/NameEditDialog.tsx
+src/components/NumberEditDialog.tsx
+src/components/PlateauEditor.tsx
+src/components/PlateauSettingsDialog.tsx
+src/components/SceneTimeline.tsx
+src/components/SerialPortDialog.tsx
+src/components/TutorialOverlay.tsx
+src/components/UploadLfpDialog.tsx
+src/components/UploadSceneDialog.tsx
+src/components/ViewportSizeGuard.tsx
+src/components/intention-definitions.tsx
+src/components/timeline-viewport.ts
+src/components/useDialogPresence.ts
+src/context/AuthProvider.tsx
+src/context/DataProvider.tsx
+src/context/HelpProvider.tsx
+src/context/SerialProvider.tsx
+src/context/authContext.ts
+src/context/dataContext.ts
+src/context/helpContext.ts
+src/context/index.ts
+src/context/serialContext.ts
+src/context/useAuth.ts
+src/context/useData.ts
+src/context/useHelp.ts
+src/context/useSerial.ts
+src/data/index.ts
+src/data/persistence.ts
+src/data/types.ts
+src/index.css
+src/lfpEncoder.ts
+src/lib/helpSections.ts
+src/lib/preferences.ts
+src/lib/settingsSections.ts
+src/lib/sounds.ts
+src/lib/undoRedoEvents.ts
+src/main.tsx
+src/pages/HelpPage.tsx
+src/pages/SettingsPage.tsx
+src/sceneGenerator.ts
+src/serial/crc16.ts
+src/serial/crc32.ts
+src/serial/electronSerialAdapter.ts
+src/serial/index.ts
+src/serial/lfpTransport.ts
+src/serial/moduleSerial.ts
+src/serial/serialConnection.ts
+src/serial/types.ts
+src/storage/electronStorageAdapter.ts
+src/storage/index.ts
+src/storage/localStorageAdapter.ts
+src/storage/types.ts
+src/vite-env.d.ts
+
+Fichier image référencé par le code (import Vite) :
+assets/logo-lumirail.png
+(chemin relatif depuis la racine du projet Lumirail Studio, import dans App.tsx)
+
+
+8. Assets servis tels quels (dossier public/)
+---------------------------------------------
+public/assets/loader_animated.png
+public/assets/animation/1.png
+public/assets/animation/2.png
+public/assets/animation/3.png
+public/assets/animation/4.png
+public/assets/animation/5.png
+public/assets/animation/6.png
+public/assets/animation/7.png
+public/assets/animation/8.png
+public/assets/animation/9.png
+public/assets/animation/10.png
+public/assets/animation/11.png
+public/assets/animation/12.png
+public/assets/animation/13.png
+public/assets/animation/14.png
+public/assets/animation/15.png
+public/assets/animation/16.png
+public/assets/animation/17.png
+public/assets/animation/18.png
+public/assets/animation/19.png
+
+
+9. Fichiers optionnels au runtime (non requis pour démarrer le binaire)
+-----------------------------------------------------------------------
+.env, .env.local (variables VITE_* si présentes)
+.env.example (documentation)
+
+electron-builder.yml (empaquetage release)
+
+
+10. Dépendances npm — exécution applicative (dependencies)
+---------------------------------------------------------
+bcryptjs
+fabric
+lucide-react
+react
+react-dom
+react-router-dom
+serialport
+
+
+11. Dépendances npm — outillage / build (devDependencies, extrait)
+------------------------------------------------------------------
+@vitejs/plugin-react
+concurrently
+cross-env
+electron
+electron-builder
+typescript
+vite
+wait-on
+(et le reste du bloc devDependencies du package.json pour lint, tests, eslint, vitest, etc.)
+
+
+12. Modules Node résolus au runtime (hors arborescence du repo)
+--------------------------------------------------------------
+node_modules/ (tout le graphe requis par les imports ci-dessus)
+Binaires natifs : rebuild serialport pour la version d’Electron / Node utilisée
+
+
+13. Données créées au fil de l’eau (pas dans le dépôt)
+------------------------------------------------------
+Répertoire utilisateur Electron (userData), sous-dossier utilisé par main.mjs pour le stockage :
+lumirail/data/users/*.json
+
+
+14. Ressources externes (réseau)
+--------------------------------
+Polices Google Fonts (liens dans index.html), si la machine a accès Internet.
+
+
+15. Build production (rappel)
+-----------------------------
+vite build écrit dans dist/ ; Electron charge alors dist/index.html (file URL) au lieu de localhost:9000.
+
+
+Fin du document.

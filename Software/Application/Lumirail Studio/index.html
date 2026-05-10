@@ -22,21 +22,33 @@
       transition: opacity 0.4s ease-out;
     }
     #splash.hidden { opacity: 0; pointer-events: none; }
-    #splash-logo { width: 120px; height: auto; margin-bottom: 24px; animation: splash-pulse 1.5s ease-in-out infinite; }
+    #splash-logo { width: 120px; height: auto; margin-bottom: 16px; }
+    #splash-loading { font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 500; color: rgba(233,238,252,0.75); margin-bottom: 12px; }
+    #splash-log {
+      width: min(92vw, 440px);
+      min-height: 2.6em;
+      margin-bottom: 16px;
+      padding: 0 10px;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 400;
+      line-height: 1.45;
+      color: rgba(160, 184, 220, 0.88);
+      word-break: break-word;
+    }
     #splash-title { font-family: 'DM Sans', sans-serif; font-size: 1.5rem; font-weight: 600; color: #e9eefc; margin-bottom: 8px; }
     #splash-version { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: rgba(233,238,252,0.55); }
-    #splash-spinner { width: 32px; height: 32px; margin-top: 32px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #7c9cf7; border-radius: 50%; animation: splash-spin 0.8s linear infinite; }
-    @keyframes splash-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-    @keyframes splash-spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 
 <body>
   <div id="splash">
-    <img id="splash-logo" src="/assets/logo-lumirail.png" alt="" aria-hidden>
+    <img id="splash-logo" src="/assets/loader_animated.png" alt="" aria-hidden>
+    <div id="splash-loading">Chargement en cours..</div>
+    <div id="splash-log" aria-hidden="true"></div>
     <div id="splash-title">Lumirail Studio</div>
     <div id="splash-version">v0.1.0</div>
-    <div id="splash-spinner" aria-hidden></div>
   </div>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>

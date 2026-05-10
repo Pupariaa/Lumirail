@@ -1,5 +1,7 @@
 import type { SerialConnectionState } from './types'
 import type { LfpFrame } from './lfpTransport'
+import type { GatewayHardwareTelemetry } from '../data/gatewayTelemetry'
+import { parseGatewayMonPayload } from '../data/gatewayTelemetry'
 import {
   buildFrame,
   parseFrame,
@@ -103,6 +105,71 @@ const SCENE_SEND_TO_MODULE_TIMEOUT_MS = 60000
 
 export const LFP_BLOCK_SIZE = PAGE_SIZE
 
+export type DeviceKind = 'gateway' | 'bridge'
+
+const ESPRESSIF_USB_VID = 0x303a
+const DIGIKEY_VID = 0x303a
+const DIGIKEY_PID = 0x1001
+
+let deviceKind: DeviceKind = 'bridge'
+let gwProbeResolve: ((line: string) => void) | null = null
+
+type GatewayUsbListener = (present: boolean) => void
+const gatewayUsbListeners = new Set<GatewayUsbListener>()
+let gatewayUsbMassStoragePresent = false
+
+function parseGatewayUsbLine(trimmed: string): boolean | null {
+  if (trimmed === 'GW_USB:1' || trimmed === 'GW_USB:present') return true
+  if (trimmed === 'GW_USB:0' || trimmed === 'GW_USB:absent') return false
+  const m = trimmed.match(/^GW_USB:(0|1)$/i)
+  if (m) return (m[1] ?? '') === '1'
+  return null
+}
+
+function notifyGatewayUsbIfChanged(present: boolean): void {
+  if (gatewayUsbMassStoragePresent === present) return
+  gatewayUsbMassStoragePresent = present
+  gatewayUsbListeners.forEach((cb) => cb(present))
+}
+
+function getGatewayUsbPresent(): boolean {
+  return gatewayUsbMassStoragePresent
+}
+
+function subscribeGatewayUsb(listener: GatewayUsbListener): () => void {
+  gatewayUsbListeners.add(listener)
+  return () => gatewayUsbListeners.delete(listener)
+}
+
+type GatewayTelemetryListener = (value: GatewayHardwareTelemetry | null) => void
+const gatewayTelemetryListeners = new Set<GatewayTelemetryListener>()
+let gatewayTelemetrySnapshot: GatewayHardwareTelemetry | null = null
+
+function notifyGatewayTelemetrySnapshot(value: GatewayHardwareTelemetry | null): void {
+  gatewayTelemetrySnapshot = value
+  gatewayTelemetryListeners.forEach((cb) => cb(value))
+}
+
+function tryParseGatewayMonLine(trimmed: string): void {
+  if (!trimmed.startsWith('GW_MON:')) return
+  const payloadText = trimmed.slice(7)
+  try {
+    const raw = JSON.parse(payloadText) as unknown
+    const parsed = parseGatewayMonPayload(raw)
+    if (parsed) notifyGatewayTelemetrySnapshot(parsed)
+  } catch (_) {}
+}
+
+function getGatewayTelemetry(): GatewayHardwareTelemetry | null {
+  return gatewayTelemetrySnapshot
+}
+
+function subscribeGatewayTelemetry(listener: GatewayTelemetryListener): () => void {
+  gatewayTelemetryListeners.add(listener)
+  listener(gatewayTelemetrySnapshot)
+  return () => gatewayTelemetryListeners.delete(listener)
+}
+
 const UPLOAD_ESTIMATE_MS_PER_KB = 219
 const UPLOAD_ESTIMATE_FIXED_MS = 8420
 
@@ -164,6 +231,14 @@ function notifyModulePresence(present: boolean): void {
 }
 
 function processLine(trimmed: string): void {
+  if (trimmed.startsWith('GW_ACK:') && gwProbeResolve) {
+    const r = gwProbeResolve
+    gwProbeResolve = null
+    r(trimmed)
+  }
+  const gwUsb = parseGatewayUsbLine(trimmed)
+  if (gwUsb !== null) notifyGatewayUsbIfChanged(gwUsb)
+  tryParseGatewayMonLine(trimmed)
   if (trimmed === 'PONG') {
     lastPongMs = Date.now()
     notifyModulePresence(true)
@@ -396,6 +471,10 @@ async function readLoop(): Promise<void> {
       console.error('Serial read error:', (err as Error).message)
     }
   } finally {
+    deviceKind = 'bridge'
+    gwProbeResolve = null
+    notifyGatewayUsbIfChanged(false)
+    notifyGatewayTelemetrySnapshot(null)
     stopPresencePing()
     setState('disconnected')
     const miReject = moduleInfoReject
@@ -417,6 +496,40 @@ async function readLoop(): Promise<void> {
   }
 }
 
+function getDeviceKind(): DeviceKind {
+  return deviceKind
+}
+
+async function probeGatewayLine(): Promise<void> {
+  deviceKind = 'bridge'
+  await new Promise<void>((resolve) => {
+    let settled = false
+    const t = setTimeout(() => {
+      if (settled) return
+      settled = true
+      gwProbeResolve = null
+      deviceKind = 'bridge'
+      resolve()
+    }, 450)
+    gwProbeResolve = (line: string) => {
+      if (settled) return
+      settled = true
+      clearTimeout(t)
+      gwProbeResolve = null
+      deviceKind = line.startsWith('GW_ACK:') ? 'gateway' : 'bridge'
+      resolve()
+    }
+    sendMessage('GW_HELLO').catch(() => {
+      if (settled) return
+      settled = true
+      clearTimeout(t)
+      gwProbeResolve = null
+      deviceKind = 'bridge'
+      resolve()
+    })
+  })
+}
+
 async function sendMessage(message: string): Promise<void> {
   if (!port?.writable) return
   const writer = port.writable.getWriter()
@@ -435,15 +548,13 @@ async function attachPort(p: PortLike): Promise<void> {
   incomingByteBuffer = new Uint8Array(0)
   lfpFrameHandler = null
   readLoop()
+  await probeGatewayLine()
   setState('connected')
   await new Promise((r) => setTimeout(r, DIGIKEYPING_DELAY_MS))
   await sendMessage('DIGIKEYPING')
   await new Promise((r) => setTimeout(r, PRESENCE_PING_START_DELAY_MS))
   startPresencePing()
 }
-
-const DIGIKEY_VID = 0x303a
-const DIGIKEY_PID = 0x1001
 
 async function connect(): Promise<void> {
   const serial = getSerial()
@@ -453,7 +564,19 @@ async function connect(): Promise<void> {
   if (state !== 'disconnected') return
   setState('connecting')
   try {
-    const p = await serial.requestPort()
+    let p
+    try {
+      p = await serial.requestPort({
+        filters: [{ usbVendorId: ESPRESSIF_USB_VID }],
+      })
+    } catch (err) {
+      const name = (err as DOMException)?.name
+      if (name === 'NotFoundError') {
+        p = await serial.requestPort()
+      } else {
+        throw err
+      }
+    }
     await p.open({ baudRate: BAUD_RATE })
     await new Promise((r) => setTimeout(r, INIT_DELAY_MS))
     if (typeof p.setSignals === 'function') {
@@ -488,7 +611,7 @@ async function connectAuto(): Promise<void> {
           const info = portCandidate.getInfo?.()
           const vid = info?.usbVendorId ?? 0
           const pid = info?.usbProductId ?? 0
-          if (vid === DIGIKEY_VID && pid === DIGIKEY_PID) {
+          if (vid === ESPRESSIF_USB_VID) {
             await portCandidate.open({ baudRate: BAUD_RATE })
             await new Promise((r) => setTimeout(r, INIT_DELAY_MS))
             if (typeof portCandidate.setSignals === 'function') {
@@ -505,7 +628,7 @@ async function connectAuto(): Promise<void> {
     }
     if (!p) {
       setState('disconnected')
-      throw new Error('No previously granted DigiKey port. Use Connect button to select device.')
+      throw new Error('No previously granted Espressif USB port. Use Connect to select a device.')
     }
     await attachPort(p)
   } catch (err) {
@@ -523,6 +646,10 @@ async function disconnect(): Promise<void> {
   if (typeof window !== 'undefined' && window.electronSerial) {
     await window.electronSerial.disconnect()
   }
+  deviceKind = 'bridge'
+  gwProbeResolve = null
+  notifyGatewayUsbIfChanged(false)
+  notifyGatewayTelemetrySnapshot(null)
   stopPresencePing()
   if (reader) {
     try {
@@ -553,6 +680,9 @@ async function disconnect(): Promise<void> {
 async function getModuleInfo(): Promise<ModuleInfo> {
   if (state !== 'connected' || !port?.writable) {
     throw new Error('DigiKey not connected')
+  }
+  if (deviceKind === 'gateway') {
+    throw new Error('Module scan not available on gateway-only firmware')
   }
   if (uploadInProgress) {
     throw new Error('Upload already in progress')
@@ -652,6 +782,9 @@ async function uploadScene(
 ): Promise<void> {
   if (state !== 'connected' || !port?.writable) {
     throw new Error('DigiKey not connected')
+  }
+  if (deviceKind === 'gateway') {
+    throw new Error('Upload not supported on gateway-only firmware')
   }
   if (uploadInProgress) throw new Error('Upload already in progress')
   uploadInProgress = true
@@ -861,6 +994,9 @@ async function uploadLfpViaBridge(lfpBuffer: ArrayBuffer, onProgress?: UploadLfp
 async function uploadLfp(lfpBuffer: ArrayBuffer, options: UploadLfpOptions): Promise<void> {
   if (state !== 'connected' || !port?.writable) {
     throw new Error('DigiKey not connected')
+  }
+  if (deviceKind === 'gateway') {
+    throw new Error('Upload not supported on gateway-only firmware')
   }
   if (uploadInProgress) throw new Error('Upload already in progress')
   uploadInProgress = true
@@ -1094,6 +1230,11 @@ export const serialConnection = {
   getBoardSerial,
   setConfig,
   getState,
+  getDeviceKind,
+  getGatewayUsbPresent,
+  subscribeGatewayUsb,
+  getGatewayTelemetry,
+  subscribeGatewayTelemetry,
   subscribe,
   subscribeModulePresence,
   getModulePresent,
